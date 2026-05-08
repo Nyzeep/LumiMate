@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / local machine state
+.idea/
+.vscode/
+
+# Build and cache output
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local model/runtime assets
+/GenieData/
+/models/
+/预编译的flash atn/
