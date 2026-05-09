@@ -1,6 +1,7 @@
 from .buttons import AnimatedButton, GlassButton, GlowButton, NavigationItem, SidebarButton
 from .cards import FrostPanel, GlassCard, StatusCard
-from .chat import ChatBubble
+from .chat import ChatBubble, PresenceTranscript
+from .geometric import OrbitalNodeButton, RitualProgress, SpatialPanel
 from .input_bar import FloatingInputBar
 from .inputs import FloatingInput
 from .page_sections import CompanionStage, InfoCard, PageHeader, QuickActionCard
@@ -26,13 +27,17 @@ __all__ = [
     "InfoCard",
     "ModernScrollArea",
     "NavigationItem",
+    "OrbitalNodeButton",
     "PageContainer",
     "PageHeader",
+    "PresenceTranscript",
     "PoeticPanel",
     "QuickActionCard",
+    "RitualProgress",
     "QuietActionButton",
     "SceneCard",
     "SidebarButton",
+    "SpatialPanel",
     "StatusCard",
     "TitleBar",
 ]

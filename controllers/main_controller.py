@@ -15,6 +15,7 @@ class MainController(QObject):
     state_changed = pyqtSignal(str, str)
     user_text = pyqtSignal(str)
     assistant_text = pyqtSignal(str)
+    text_failed = pyqtSignal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -54,6 +55,7 @@ class MainController(QObject):
         self.service.state_changed.connect(self.state_changed.emit)
         self.service.user_text.connect(self.user_text.emit)
         self.service.assistant_text.connect(self.assistant_text.emit)
+        self.service.text_failed.connect(self.text_failed.emit)
         self.state_changed.emit("validating", "正在校验模型路径。")
         self.service.start()
         return True
@@ -66,6 +68,14 @@ class MainController(QObject):
         if self.service:
             return self.service.start_conversation()
         self.log.emit("请先在工作台加载模型。")
+        return False
+
+    def send_text(self, text: str) -> bool:
+        if self.service:
+            return self.service.send_text(text)
+        message = "请先在工作台加载模型。"
+        self.log.emit(message)
+        self.text_failed.emit(message)
         return False
 
     def stop_conversation(self) -> None:

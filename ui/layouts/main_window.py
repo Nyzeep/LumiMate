@@ -27,9 +27,9 @@ class LumiMainWindow(QMainWindow):
         self.shell.setStyleSheet(
             """
             QWidget#windowShell {
-                background-color: rgba(3, 8, 20, 0.82);
-                border: 1px solid rgba(180,204,228,0.18);
-                border-radius: 22px;
+                background-color: rgba(2, 7, 19, 0.78);
+                border: 1px solid rgba(201,217,226,0.14);
+                border-radius: 24px;
             }
             """
         )
@@ -44,7 +44,7 @@ class LumiMainWindow(QMainWindow):
     def _apply_safe_start_size(self) -> None:
         screen = QApplication.primaryScreen()
         if not screen:
-            self.setMinimumSize(900, 560)
+            self.setMinimumSize(920, 600)
             self.resize(1280, 760)
             return
         available = screen.availableGeometry()
@@ -52,8 +52,8 @@ class LumiMainWindow(QMainWindow):
         safe_height = max(1, int(available.height() * 0.90))
         min_width = min(920, max(560, int(available.width() * 0.62)), safe_width)
         min_height = min(600, max(440, int(available.height() * 0.62)), safe_height)
-        width = min(max(min_width, int(available.width() * 0.88)), 1420, safe_width)
-        height = min(max(min_height, int(available.height() * 0.86)), 860, safe_height)
+        width = min(max(min_width, int(available.width() * 0.88)), 1500, safe_width)
+        height = min(max(min_height, int(available.height() * 0.86)), 900, safe_height)
         self.setMinimumSize(min_width, min_height)
         self.resize(width, height)
         self.move(
@@ -106,6 +106,8 @@ class LumiMainWindow(QMainWindow):
 
         self.chat_page.start_requested.connect(self._start_conversation)
         self.chat_page.stop_requested.connect(self._stop_conversation)
+        self.chat_page.send_requested.connect(self._send_text)
+        self.chat_page.open_workbench_requested.connect(lambda: self._select_page("workbench"))
 
         self.workbench_page.asr_browse.clicked.connect(lambda: self._browse(self.workbench_page.asr_edit, directory=True))
         self.workbench_page.llm_browse.clicked.connect(lambda: self._browse(self.workbench_page.llm_edit, directory=True))
@@ -118,8 +120,9 @@ class LumiMainWindow(QMainWindow):
         self.controller.progress.connect(self.workbench_page.set_progress)
         self.controller.state_changed.connect(self._on_state_changed)
         self.controller.loaded.connect(self._on_loaded)
+        self.controller.text_failed.connect(self._on_text_failed)
         self.controller.user_text.connect(lambda text: self.chat_page.add_message(text, True))
-        self.controller.assistant_text.connect(lambda text: self.chat_page.add_message(text, False))
+        self.controller.assistant_text.connect(self._on_assistant_text)
 
     def _select_page(self, key: str) -> None:
         if key not in self.pages:
@@ -155,6 +158,10 @@ class LumiMainWindow(QMainWindow):
         self.chat_page.set_running(False)
         self.workbench_page.append_log("对话已停下。")
 
+    def _send_text(self, text: str) -> None:
+        if self.controller.send_text(text):
+            self.chat_page.set_status("Lumi 正在组织回应")
+
     def _on_state_changed(self, state: str, message: str) -> None:
         self.workbench_page.set_model_state(state, message)
         self.chat_page.set_ready(state in {"ready", "running"})
@@ -163,6 +170,15 @@ class LumiMainWindow(QMainWindow):
     def _on_loaded(self, success: bool) -> None:
         self.workbench_page.set_loaded(success)
         self.chat_page.set_ready(success)
+
+    def _on_text_failed(self, message: str) -> None:
+        self.chat_page.set_status(message)
+        self.workbench_page.append_log(message)
+
+    def _on_assistant_text(self, text: str) -> None:
+        self.chat_page.add_message(text, False)
+        if self.chat_page.is_ready() and not self.chat_page.is_running():
+            self.chat_page.set_status("已经准备好")
 
     def _toggle_maximize(self) -> None:
         if self.isMaximized():

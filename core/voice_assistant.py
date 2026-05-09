@@ -22,6 +22,7 @@ class VoiceAssistant:
         self.messages = []
         self.genie = None
         self._lock = threading.RLock()
+        self._response_lock = threading.RLock()
 
     def log(self, message: str) -> None:
         if self.on_log:
@@ -110,10 +111,31 @@ class VoiceAssistant:
         self.messages.append({"role": "assistant", "content": response})
         return response
 
+    def respond_to_text(self, user_text: str, speak: bool = True, emit_user: bool = True) -> str:
+        user_text = user_text.strip()
+        if not user_text:
+            return ""
+        if not self.llm or not self.tokenizer:
+            raise RuntimeError("模型还没有准备好。")
+
+        if emit_user:
+            self.log(f"你：{user_text}")
+            if self.on_user_text:
+                self.on_user_text(user_text)
+
+        with self._response_lock:
+            assistant_text = self.llm_generate(user_text)
+            self.log(f"Lumi：{assistant_text}")
+            if self.on_assistant_text:
+                self.on_assistant_text(assistant_text)
+            if speak:
+                self.safe_tts(assistant_text)
+            return assistant_text
+
     def safe_tts(self, text: str) -> None:
         if not text or not self.tts_ready or self.genie is None:
             return
-        text = text.replace("嗯", "恩").replace("哦", "噢").replace("啊", "呀")
+        text = text.replace("嗯", "恩").replace("啊", "呀").replace("呃", "额")
         text = re.sub(r"[^\u4e00-\u9fa5，。！？、,.!?]", "", text)
         if len(text) < 2:
             text = "好的。"
@@ -175,16 +197,10 @@ class VoiceAssistant:
                 self.on_user_text(user_text)
 
             try:
-                assistant_text = self.llm_generate(user_text)
+                self.respond_to_text(user_text, speak=True, emit_user=False)
             except Exception as exc:
                 self.log(f"Lumi 生成回复失败：{exc}")
                 continue
-
-            self.log(f"Lumi：{assistant_text}")
-            if self.on_assistant_text:
-                self.on_assistant_text(assistant_text)
-
-            self.safe_tts(assistant_text)
 
         self.log("对话已停止。")
 

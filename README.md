@@ -1,6 +1,6 @@
 # LumiMate
 
-LumiMate 是一个基于 Python 和 PyQt6 的桌面 AI Companion 应用。当前版本包含桌面 UI、语音对话入口、模型工作台，以及面向后续角色资源接入的界面结构。
+LumiMate 是一个基于 Python 和 PyQt6 的桌面 AI Companion 应用。当前版本包含“Quiet Geometric Emotionalism”夜间情绪空间 UI、语音/文字最小对话入口、模型唤醒工作台，以及面向后续角色资源接入的界面结构。
 
 ## 运行
 
@@ -33,8 +33,13 @@ controllers/  UI 与服务层控制器
 core/         语音助手核心调用
 services/     模型加载与运行生命周期
 ui/           PyQt6 界面、组件、页面、主题与效果
-resources/    参考音频等轻量资源
+resources/    参考音频与 UI 位图资产
+tools/        项目维护脚本，例如 UI 资产生成脚本
 ```
+
+`resources/ui/` 中的三张 PNG 是项目内原创生成资产，用于 Lumi 夜间场景、陪伴立绘和氛围纹理；可通过 `tools/generate_ui_assets.py` 重新生成。
+
+`resources/prompt_wav.json` 用于配置默认 TTS 参考音频和参考文本，工作台会在启动时读取它并填入模型初始化参数。
 
 ## 额外运行依赖
 

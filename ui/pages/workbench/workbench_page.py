@@ -6,8 +6,6 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QProgressBar,
-    QPushButton,
     QSizePolicy,
     QSlider,
     QTextEdit,
@@ -16,7 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import AssistantConfig
-from ui.components import CompanionScene, FloatingInput, GlassButton, GlowButton, ModernScrollArea, PageContainer, PoeticPanel, SceneCard
+from ui.components import CompanionScene, FloatingInput, GlassButton, GlowButton, ModernScrollArea, PageContainer, PoeticPanel, RitualProgress, SceneCard
 from ui.themes import Theme
 
 
@@ -32,7 +30,7 @@ class WorkbenchPage(PageContainer):
         self.scroll_content = QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
         content_layout = QVBoxLayout(self.scroll_content)
-        content_layout.setContentsMargins(44, 34, 42, 34)
+        content_layout.setContentsMargins(42, 30, 42, 30)
         content_layout.setSpacing(18)
         self.scroll_area.setWidget(self.scroll_content)
         self.root.addWidget(self.scroll_area)
@@ -40,44 +38,43 @@ class WorkbenchPage(PageContainer):
 
         title = QLabel("工作台")
         title.setFont(QFont("Microsoft YaHei UI", 30, QFont.Weight.DemiBold))
-        subtitle = QLabel("整理 Lumi 的核心能力，复杂参数默认安静地收起来。")
-        subtitle.setStyleSheet("color: rgba(238,243,245,0.62);")
+        title.setStyleSheet("color: rgba(243,225,206,0.96);")
+        subtitle = QLabel("这里是 Lumi 的苏醒仪式。模型、语音与记忆会在光里慢慢连上。")
+        subtitle.setStyleSheet("color: rgba(242,237,229,0.60);")
         self.root.addWidget(title)
         self.root.addWidget(subtitle)
 
         top = QHBoxLayout()
         top.setSpacing(16)
         self.model_state_card = SceneCard("模型状态", "未加载", "等待启动。", warm=True)
-        self.voice_state_card = SceneCard("语音状态", "待机", "开始对话后进入聆听。", warm=True)
-        self.plugin_state_card = SceneCard("扩展", "预留", "角色资源、记忆同步与外部工具。", warm=True)
+        self.voice_state_card = SceneCard("语音状态", "待机", "对话开始后进入聆听。", warm=True)
+        self.plugin_state_card = SceneCard("扩展", "预留", "角色资源、记忆同步与外部工具。", warm=False)
         top.addWidget(self.model_state_card)
         top.addWidget(self.voice_state_card)
         top.addWidget(self.plugin_state_card)
         self.root.addLayout(top)
 
-        workbench_stage = PoeticPanel(radius=26)
-        workbench_stage_layout = QVBoxLayout(workbench_stage)
-        workbench_stage_layout.setContentsMargins(0, 0, 0, 0)
+        ritual_panel = PoeticPanel(radius=26, warm=True)
+        ritual_layout = QVBoxLayout(ritual_panel)
+        ritual_layout.setContentsMargins(0, 0, 0, 0)
+        ritual_layout.setSpacing(0)
         workbench_scene = CompanionScene("workbench")
-        workbench_scene.setFixedHeight(150)
-        workbench_stage_layout.addWidget(workbench_scene)
-        self.root.addWidget(workbench_stage)
+        workbench_scene.setFixedHeight(176)
+        ritual_layout.addWidget(workbench_scene)
+        self.ritual_progress = RitualProgress()
+        self.progress_bar = self.ritual_progress
+        ritual_layout.addWidget(self.ritual_progress)
+        self.root.addWidget(ritual_panel)
 
-        self.progress_label = QLabel("待机")
-        self.progress_label.setStyleSheet("color: rgba(238,243,245,0.68);")
-        self.progress_bar = QProgressBar()
+        self.progress_label = QLabel("等待开始")
+        self.progress_label.setStyleSheet("color: rgba(242,237,229,0.66);")
         self.root.addWidget(self.progress_label)
-        self.root.addWidget(self.progress_bar)
 
         actions = QHBoxLayout()
         actions.setSpacing(12)
-        self.load_button = GlowButton("加载全部模型")
-        self.stop_button = GlassButton("停止语音")
-        self.advanced_button = QPushButton("高级设置  ▾")
-        self.advanced_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.advanced_button.setStyleSheet(
-            f"QPushButton {{ background: transparent; border: 0; color: {Theme.text}; font-weight: 700; text-align: left; }}"
-        )
+        self.load_button = GlowButton("开始苏醒")
+        self.stop_button = GlassButton("停止聆听")
+        self.advanced_button = GlassButton("高级设置")
         actions.addWidget(self.load_button)
         actions.addWidget(self.stop_button)
         actions.addWidget(self.advanced_button)
@@ -115,7 +112,7 @@ class WorkbenchPage(PageContainer):
         self._add_field(grid, 2, "TTS 目录", self.tts_edit, self.tts_browse)
         self._add_field(grid, 3, "参考音频", self.audio_edit, self.audio_browse)
         self._add_field(grid, 4, "参考文本", self.ref_text_edit)
-        self._add_field(grid, 5, "角色名", self.role_edit)
+        self._add_field(grid, 5, "角色名称", self.role_edit)
         advanced_layout.addLayout(grid)
 
         controls = QGridLayout()
@@ -158,10 +155,12 @@ class WorkbenchPage(PageContainer):
         self.log_text.setStyleSheet(
             f"""
             QTextEdit {{
-                background-color: rgba(3, 8, 20, 0.48);
-                border: 1px solid rgba(180,204,228,0.14);
-                border-radius: 18px;
-                padding: 12px;
+                background-color: rgba(3, 8, 18, 0.18);
+                border: 0;
+                border-left: 1px solid rgba(201,217,226,0.13);
+                border-bottom: 1px solid rgba(201,217,226,0.08);
+                border-radius: 0px;
+                padding: 12px 12px 12px 16px;
                 color: {Theme.text};
                 font-family: Consolas, "Microsoft YaHei UI";
             }}
@@ -175,7 +174,7 @@ class WorkbenchPage(PageContainer):
 
     def _add_field(self, grid: QGridLayout, row: int, label_text: str, edit: FloatingInput, button: GlassButton | None = None) -> None:
         label = QLabel(label_text)
-        label.setStyleSheet("color: rgba(238,243,245,0.66); font-weight: 650;")
+        label.setStyleSheet("color: rgba(242,237,229,0.66); font-weight: 650;")
         label.setMinimumWidth(88)
         label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         edit.setMinimumWidth(280)
@@ -197,7 +196,7 @@ class WorkbenchPage(PageContainer):
     def _toggle_advanced(self) -> None:
         visible = not self.advanced_panel.isVisible()
         self.advanced_panel.setVisible(visible)
-        self.advanced_button.setText("高级设置  ▴" if visible else "高级设置  ▾")
+        self.advanced_button.setText("隐藏设置" if visible else "高级设置")
 
     def set_config(self, config: AssistantConfig) -> None:
         self.asr_edit.setText(config.asr_path)
@@ -227,20 +226,19 @@ class WorkbenchPage(PageContainer):
         self.log_text.append(message)
 
     def set_progress(self, step: int, total: int, message: str) -> None:
-        self.progress_bar.setMaximum(max(total, 1))
-        self.progress_bar.setValue(step)
+        self.ritual_progress.set_state("loading", message, step, total)
         self.progress_label.setText(message)
 
     def set_model_state(self, state: str, message: str) -> None:
         state_names = {
             "idle": "未加载",
             "validating": "校验中",
-            "loading_asr": "加载 ASR",
-            "loading_llm": "加载 LLM",
-            "loading_tts": "初始化 TTS",
+            "loading_asr": "正在加载 ASR",
+            "loading_llm": "正在加载 LLM",
+            "loading_tts": "正在初始化 TTS",
             "ready": "已就绪",
             "running": "聆听中",
-            "stopping": "停止中",
+            "stopping": "正在停止",
             "failed": "加载失败",
         }
         self.model_state_card.set_value(state_names.get(state, state), message)
@@ -249,12 +247,13 @@ class WorkbenchPage(PageContainer):
         elif state in {"ready", "failed", "idle"}:
             self.voice_state_card.set_value("待机", "开始对话后进入聆听。")
         self.load_button.setEnabled(state not in {"validating", "loading_asr", "loading_llm", "loading_tts", "stopping"})
+        self.ritual_progress.set_state(state, message)
 
     def set_loaded(self, success: bool) -> None:
         self.load_button.setEnabled(True)
         if success:
-            self.load_button.setText("模型已就绪")
+            self.load_button.setText("已就绪")
             self.append_log("模型加载完成，可以开始对话。")
         else:
-            self.load_button.setText("加载全部模型")
-            self.append_log("模型加载失败，请查看运行记录。")
+            self.load_button.setText("开始苏醒")
+            self.append_log("模型加载失败，请检查运行记录。")

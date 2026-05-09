@@ -1,10 +1,31 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RESOURCES_ROOT = PROJECT_ROOT / "resources"
+PROMPT_WAV_CONFIG = RESOURCES_ROOT / "prompt_wav.json"
+DEFAULT_REF_WAV = "zh_vo_Main_Linaxita_2_1_10_26.wav"
+DEFAULT_REF_TEXT = "在此之前，请您务必继续享受旅居拉古那的时光。"
+
+
+def _reference_prompt() -> tuple[Path, str]:
+    try:
+        payload = json.loads(PROMPT_WAV_CONFIG.read_text(encoding="utf-8"))
+        normal = payload.get("Normal", {})
+        wav_name = str(normal.get("wav") or DEFAULT_REF_WAV)
+        text = str(normal.get("text") or DEFAULT_REF_TEXT)
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        wav_name = DEFAULT_REF_WAV
+        text = DEFAULT_REF_TEXT
+
+    wav_path = Path(wav_name)
+    if not wav_path.is_absolute():
+        wav_path = RESOURCES_ROOT / wav_path
+    return wav_path, text
 
 
 @dataclass(slots=True)
@@ -35,12 +56,13 @@ class AssistantConfig:
     @classmethod
     def defaults(cls) -> "AssistantConfig":
         paths = ProjectPaths()
+        reference_audio, reference_text = _reference_prompt()
         return cls(
             asr_path=str(paths.asr_model),
             llm_path=str(paths.llm_model),
             tts_model_dir=str(paths.tts_model),
-            ref_audio_path=str(paths.reference_audio),
-            ref_text="在此之前，请您务必继续享受旅居拉古那的时光。",
+            ref_audio_path=str(reference_audio if reference_audio.exists() else paths.reference_audio),
+            ref_text=reference_text,
         )
 
     def to_core_dict(self) -> dict:

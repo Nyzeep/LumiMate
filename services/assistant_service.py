@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 
 from PyQt6.QtCore import QMutex, QMutexLocker, QThread, pyqtSignal
@@ -14,6 +15,7 @@ class AssistantService(QThread):
     state_changed = pyqtSignal(str, str)
     user_text = pyqtSignal(str)
     assistant_text = pyqtSignal(str)
+    text_failed = pyqtSignal(str)
 
     def __init__(self, config: AssistantConfig):
         super().__init__()
@@ -22,7 +24,7 @@ class AssistantService(QThread):
         self.is_ready = False
         self.state = "idle"
         self._mutex = QMutex()
-        self._stop_requested = False
+        self._text_thread: threading.Thread | None = None
 
     def set_state(self, state: str, message: str) -> None:
         self.state = state
@@ -33,7 +35,6 @@ class AssistantService(QThread):
         from core import VoiceAssistant
 
         try:
-            self._stop_requested = False
             self.set_state("validating", "正在准备模型加载。")
             self.assistant = VoiceAssistant(
                 self.config.to_core_dict(),
@@ -49,7 +50,7 @@ class AssistantService(QThread):
                 self.set_state("ready", f"模型已就绪，用时 {elapsed:.1f} 秒。")
                 self.loaded.emit(True)
             else:
-                self.set_state("failed", "模型加载没有完成，请查看上方记录。")
+                self.set_state("failed", "模型加载没有完成，请查看运行记录。")
                 self.loaded.emit(False)
 
             while self.is_ready and not self.isInterruptionRequested():
@@ -87,6 +88,37 @@ class AssistantService(QThread):
                 self.state_changed.emit("running", "Lumi 正在聆听。")
             return started
 
+    def send_text(self, text: str) -> bool:
+        text = text.strip()
+        if not text:
+            return False
+
+        with QMutexLocker(self._mutex):
+            if not self.assistant or not self.is_ready:
+                message = "模型还没有准备好。"
+                self.log.emit(message)
+                self.text_failed.emit(message)
+                return False
+            if self._text_thread and self._text_thread.is_alive():
+                message = "Lumi 正在组织上一段回应，请稍候。"
+                self.log.emit(message)
+                self.text_failed.emit(message)
+                return False
+            assistant = self.assistant
+
+        def worker() -> None:
+            try:
+                self.log.emit("Lumi 正在组织回应。")
+                assistant.respond_to_text(text, speak=True, emit_user=True)
+            except Exception as exc:
+                message = f"文字对话失败：{exc}"
+                self.log.emit(message)
+                self.text_failed.emit(message)
+
+        self._text_thread = threading.Thread(target=worker, daemon=True)
+        self._text_thread.start()
+        return True
+
     def stop_conversation(self) -> None:
         with QMutexLocker(self._mutex):
             if self.assistant:
@@ -98,4 +130,6 @@ class AssistantService(QThread):
     def shutdown(self) -> None:
         self.requestInterruption()
         self.stop_conversation()
+        if self._text_thread and self._text_thread.is_alive():
+            self._text_thread.join(timeout=1.0)
         self.wait(3500)

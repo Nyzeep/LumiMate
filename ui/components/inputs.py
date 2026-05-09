@@ -14,19 +14,21 @@ class FloatingInput(QLineEdit):
         self.setStyleSheet(
             f"""
             QLineEdit {{
-                background-color: rgba(9, 17, 30, 0.58);
-                border: 1px solid rgba(180,204,228,0.18);
-                border-radius: 14px;
-                padding: 8px 13px;
+                background-color: rgba(3, 8, 18, 0.34);
+                border: 0px;
+                border-bottom: 1px solid rgba(201,217,226,0.20);
+                border-radius: 0px;
+                padding: 8px 10px;
                 color: {Theme.text};
+                selection-background-color: rgba(217,120,85,0.42);
             }}
             QLineEdit:hover {{
-                background-color: rgba(18,29,46,0.72);
-                border-color: rgba(180,204,228,0.30);
+                background-color: rgba(9,17,30,0.42);
+                border-bottom-color: rgba(201,217,226,0.34);
             }}
             QLineEdit:focus {{
-                background-color: rgba(18,29,46,0.82);
-                border-color: rgba(226,118,79,0.62);
+                background-color: rgba(13,24,42,0.54);
+                border-bottom-color: rgba(217,120,85,0.72);
             }}
             """
         )

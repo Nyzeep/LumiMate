@@ -4,8 +4,8 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ui.components.buttons import GlassButton
-from ui.components.cards import GlassCard, StatusCard
-from ui.components.poetic import CompanionScene, QuietActionButton, SceneCard
+from ui.components.geometric import OrbitalNodeButton
+from ui.components.poetic import CompanionScene, SceneCard
 from ui.themes import Theme
 
 
@@ -17,7 +17,7 @@ class PageHeader(QWidget):
         layout.setSpacing(6)
         if eyebrow:
             eyebrow_label = QLabel(eyebrow)
-            eyebrow_label.setStyleSheet("color: rgba(238,243,245,0.58); font-size: 12px; font-weight: 700;")
+            eyebrow_label.setStyleSheet("color: rgba(242,237,229,0.58); font-size: 12px; font-weight: 700;")
             layout.addWidget(eyebrow_label)
         title_label = QLabel(title)
         title_label.setFont(QFont("Microsoft YaHei UI", 28, QFont.Weight.DemiBold))
@@ -26,7 +26,7 @@ class PageHeader(QWidget):
         if subtitle:
             subtitle_label = QLabel(subtitle)
             subtitle_label.setWordWrap(True)
-            subtitle_label.setStyleSheet("color: rgba(238,243,245,0.68); font-size: 13px;")
+            subtitle_label.setStyleSheet("color: rgba(242,237,229,0.68); font-size: 13px;")
             layout.addWidget(subtitle_label)
 
 
@@ -34,9 +34,9 @@ class InfoCard(SceneCard):
     pass
 
 
-class QuickActionCard(QuietActionButton):
+class QuickActionCard(OrbitalNodeButton):
     def __init__(self, title: str, detail: str, button_text: str = "进入", parent=None):
-        super().__init__(title, detail, parent=parent)
+        super().__init__(title, "orbit", detail, parent=parent)
         self.button = self
 
 
@@ -55,7 +55,7 @@ class CompanionStage(QWidget):
         title_label.setFont(QFont("Microsoft YaHei UI", 20, QFont.Weight.DemiBold))
         detail_label = QLabel(subtitle)
         detail_label.setWordWrap(True)
-        detail_label.setStyleSheet("color: rgba(238,243,245,0.64);")
+        detail_label.setStyleSheet("color: rgba(242,237,229,0.64);")
         caption.addWidget(title_label)
         caption.addStretch()
         caption.addWidget(detail_label)
