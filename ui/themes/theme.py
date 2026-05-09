@@ -32,26 +32,30 @@ class Motion:
 
 
 class Theme:
-    ink = "#0E2437"
-    ink_deep = "#071827"
-    twilight = "#17324A"
-    mist = "#D7E3EC"
-    moon = "#F0E6D8"
-    moon_soft = "#E8D7CA"
+    ink = "#07111F"
+    ink_deep = "#030814"
+    twilight = "#0F1B2C"
+    midnight = "#101B2C"
+    panel_blue = "#142033"
+    mist = "#DDE8F1"
+    moon = "#F4E7D6"
+    moon_soft = "#D9E9F6"
+    accent = "#E2764F"
+    accent_soft = "#F3A476"
     dusty_purple = "#AFA3C8"
-    mist_blue = "#7FA6BC"
-    pale_cyan = "#B9DCE4"
-    flower = "#C995A6"
-    text = "#EEF3F5"
-    text_dark = "#213646"
-    muted = "#AEBCC6"
-    dim = "#728291"
-    line = "rgba(238, 243, 245, 0.16)"
-    line_soft = "rgba(238, 243, 245, 0.09)"
-    panel = "rgba(232, 239, 243, 0.105)"
-    panel_warm = "rgba(248, 235, 224, 0.68)"
-    panel_dark = "rgba(12, 31, 48, 0.56)"
-    shadow = QColor(3, 11, 18, 70)
+    mist_blue = "#88AECB"
+    pale_cyan = "#B7D8E8"
+    flower = "#E2764F"
+    text = "#F4F8FB"
+    text_dark = "#F4F8FB"
+    muted = "#AAB8C8"
+    dim = "#77869A"
+    line = "rgba(180, 204, 228, 0.18)"
+    line_soft = "rgba(180, 204, 228, 0.10)"
+    panel = "rgba(18, 29, 46, 0.76)"
+    panel_warm = "rgba(21, 32, 49, 0.78)"
+    panel_dark = "rgba(11, 20, 34, 0.78)"
+    shadow = QColor(0, 0, 0, 130)
 
     spacing = Spacing()
     radii = Radii()
@@ -77,40 +81,40 @@ class Theme:
             }}
             QToolTip {{
                 color: {cls.text};
-                background-color: rgba(10, 25, 39, 0.94);
-                border: 1px solid rgba(255, 255, 255, 0.14);
+                background-color: rgba(10, 17, 29, 0.96);
+                border: 1px solid rgba(226, 118, 79, 0.36);
                 border-radius: 12px;
                 padding: 7px 10px;
             }}
             QProgressBar {{
-                min-height: 7px;
-                max-height: 7px;
+                min-height: 8px;
+                max-height: 8px;
                 border: 0;
-                border-radius: 3px;
-                background: rgba(255, 255, 255, 0.12);
+                border-radius: 4px;
+                background: rgba(180, 204, 228, 0.13);
                 color: transparent;
             }}
             QProgressBar::chunk {{
-                border-radius: 3px;
+                border-radius: 4px;
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {cls.mist_blue}, stop:0.55 {cls.dusty_purple}, stop:1 {cls.pale_cyan});
+                    stop:0 {cls.accent}, stop:0.62 {cls.accent_soft}, stop:1 {cls.pale_cyan});
             }}
             QSlider::groove:horizontal {{
                 height: 5px;
                 border-radius: 2px;
-                background: rgba(255, 255, 255, 0.12);
+                background: rgba(180, 204, 228, 0.16);
             }}
             QSlider::sub-page:horizontal {{
                 border-radius: 2px;
-                background: rgba(185, 220, 228, 0.72);
+                background: rgba(226, 118, 79, 0.86);
             }}
             QSlider::handle:horizontal {{
-                width: 15px;
-                height: 15px;
+                width: 16px;
+                height: 16px;
                 margin: -5px 0;
-                border-radius: 7px;
+                border-radius: 8px;
                 background: {cls.moon};
-                border: 1px solid rgba(255, 255, 255, 0.64);
+                border: 1px solid rgba(255, 255, 255, 0.78);
             }}
             QScrollBar:vertical {{
                 width: 8px;
@@ -120,10 +124,10 @@ class Theme:
             QScrollBar::handle:vertical {{
                 min-height: 42px;
                 border-radius: 4px;
-                background: rgba(238, 243, 245, 0.16);
+                background: rgba(180, 204, 228, 0.18);
             }}
             QScrollBar::handle:vertical:hover {{
-                background: rgba(238, 243, 245, 0.26);
+                background: rgba(226, 118, 79, 0.48);
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0;

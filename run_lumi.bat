@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "PYTHON_EXE=D:\Pycharm_Code\.venv\Scripts\python.exe"
+set "PYTHON_EXE=%~dp0.venv\Scripts\python.exe"
 
 if not exist "%PYTHON_EXE%" (
     echo Python interpreter not found: %PYTHON_EXE%

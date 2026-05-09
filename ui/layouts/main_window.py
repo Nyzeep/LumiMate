@@ -27,9 +27,9 @@ class LumiMainWindow(QMainWindow):
         self.shell.setStyleSheet(
             """
             QWidget#windowShell {
-                background-color: rgba(9, 25, 39, 0.72);
-                border: 1px solid rgba(255,255,255,0.18);
-                border-radius: 24px;
+                background-color: rgba(3, 8, 20, 0.82);
+                border: 1px solid rgba(180,204,228,0.18);
+                border-radius: 22px;
             }
             """
         )

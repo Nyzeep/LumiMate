@@ -3,12 +3,12 @@ from __future__ import annotations
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
-from ui.components import CompanionScene, PageContainer, QuietActionButton, SceneCard
+from ui.components import CompanionScene, PageContainer, PoeticPanel, QuietActionButton, SceneCard
 
 
 class CompanionPage(PageContainer):
     def __init__(self, parent=None):
-        super().__init__(parent, margins=(44, 34, 34, 34), spacing=18)
+        super().__init__(parent, margins=(42, 32, 34, 32), spacing=18)
         self._emotion = "平静"
         self._presence = "待机"
         self._build_ui()
@@ -16,8 +16,13 @@ class CompanionPage(PageContainer):
     def _build_ui(self) -> None:
         body = QHBoxLayout()
         body.setSpacing(28)
+        scene_panel = PoeticPanel(radius=30)
+        scene_layout = QVBoxLayout(scene_panel)
+        scene_layout.setContentsMargins(0, 0, 0, 0)
         scene = CompanionScene("companion")
-        body.addWidget(scene, 8)
+        scene.setMinimumHeight(620)
+        scene_layout.addWidget(scene)
+        body.addWidget(scene_panel, 8)
 
         side = QVBoxLayout()
         side.setSpacing(14)

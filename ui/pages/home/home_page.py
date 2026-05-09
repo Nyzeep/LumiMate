@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout
 
-from ui.components import BreathingLabel, CompanionScene, PageContainer, QuietActionButton, SceneCard
+from ui.components import BreathingLabel, CompanionScene, PageContainer, PoeticPanel, QuietActionButton, SceneCard
 
 
 class HomePage(PageContainer):
@@ -15,7 +15,7 @@ class HomePage(PageContainer):
     open_workbench_requested = pyqtSignal()
 
     def __init__(self, parent=None):
-        super().__init__(parent, margins=(52, 42, 42, 40), spacing=22)
+        super().__init__(parent, margins=(48, 38, 42, 36), spacing=20)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -24,14 +24,14 @@ class HomePage(PageContainer):
         subtitle = "Lumi 正在安静地等你。"
 
         hero = QHBoxLayout()
-        hero.setSpacing(28)
+        hero.setSpacing(24)
 
         left = QVBoxLayout()
         left.setSpacing(22)
         time_label = QLabel(datetime.now().strftime("%H:%M\n%m月%d日"))
         time_label.setStyleSheet("color: rgba(238,243,245,0.62); font-size: 14px;")
         title = QLabel(greeting)
-        title.setFont(QFont("Microsoft YaHei UI", 34, QFont.Weight.DemiBold))
+        title.setFont(QFont("Microsoft YaHei UI", 33, QFont.Weight.DemiBold))
         title.setStyleSheet("color: rgba(255,255,255,0.94);")
         breath = BreathingLabel(subtitle)
         breath.setFont(QFont("Microsoft YaHei UI", 15))
@@ -54,10 +54,14 @@ class HomePage(PageContainer):
         actions.addWidget(workbench)
         left.addLayout(actions)
 
+        scene_panel = PoeticPanel(radius=28)
+        scene_layout = QVBoxLayout(scene_panel)
+        scene_layout.setContentsMargins(0, 0, 0, 0)
         scene = CompanionScene("home")
-        scene.setMinimumHeight(470)
+        scene.setMinimumHeight(520)
+        scene_layout.addWidget(scene)
         hero.addLayout(left, 4)
-        hero.addWidget(scene, 8)
+        hero.addWidget(scene_panel, 8)
         self.root.addLayout(hero, 1)
 
         bottom = QHBoxLayout()

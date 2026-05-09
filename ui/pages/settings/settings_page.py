@@ -8,7 +8,7 @@ from ui.components import PageContainer, SceneCard
 
 class SettingsPage(PageContainer):
     def __init__(self, parent=None):
-        super().__init__(parent, margins=(48, 40, 48, 40), spacing=20)
+        super().__init__(parent, margins=(46, 36, 46, 36), spacing=20)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -20,8 +20,8 @@ class SettingsPage(PageContainer):
         self.root.addWidget(subtitle)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(18)
-        grid.setVerticalSpacing(18)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(16)
         items = [
             ("外观", "静夜梦境", "雾面背景、柔和对比与低饱和色彩。"),
             ("性能", "平衡", "慢速动画与轻量重绘。"),

@@ -13,13 +13,13 @@ class FloatingSidebar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.items: dict[str, NavigationItem] = {}
-        self.setFixedWidth(136)
+        self.setFixedWidth(158)
         self.setObjectName("minimalNavRail")
         self.setStyleSheet(
             f"""
             QWidget#minimalNavRail {{
-                background-color: rgba(8, 24, 38, 0.68);
-                border-right: 1px solid rgba(255,255,255,0.08);
+                background-color: rgba(3, 8, 20, 0.78);
+                border-right: 1px solid rgba(180,204,228,0.12);
                 border-radius: 0px;
             }}
             """
@@ -28,11 +28,11 @@ class FloatingSidebar(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 24, 14, 18)
+        layout.setContentsMargins(18, 24, 16, 18)
         layout.setSpacing(12)
 
         brand = QLabel("△  LumiMate")
-        brand.setStyleSheet(f"color: {Theme.text}; font-size: 14px; font-weight: 800;")
+        brand.setStyleSheet(f"color: {Theme.text}; font-size: 15px; font-weight: 800;")
         layout.addWidget(brand)
         layout.addSpacing(24)
 
@@ -51,8 +51,9 @@ class FloatingSidebar(QWidget):
 
         footer = QLabel("星辰\n与 LumiMate 一起")
         footer.setStyleSheet(
-            "color: rgba(238,243,245,0.58); font-size: 11px; line-height: 1.4;"
-            "background-color: rgba(239,246,248,0.09); border-radius: 18px; padding: 12px;"
+            "color: rgba(244,248,251,0.62); font-size: 11px; line-height: 1.4;"
+            "background-color: rgba(18,29,46,0.72); border: 1px solid rgba(180,204,228,0.12);"
+            "border-radius: 16px; padding: 12px;"
         )
         layout.addSpacing(12)
         layout.addWidget(footer)

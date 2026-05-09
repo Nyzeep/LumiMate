@@ -13,14 +13,14 @@ class ChatPage(PageContainer):
     clear_requested = pyqtSignal()
 
     def __init__(self, parent=None):
-        super().__init__(parent, margins=(44, 34, 34, 34), spacing=18)
+        super().__init__(parent, margins=(42, 32, 34, 32), spacing=18)
         self._ready = False
         self._running = False
         self._build_ui()
 
     def _build_ui(self) -> None:
         body = QHBoxLayout()
-        body.setSpacing(26)
+        body.setSpacing(22)
 
         chat_panel = PoeticPanel(radius=34)
         chat_layout = QVBoxLayout(chat_panel)
@@ -53,19 +53,23 @@ class ChatPage(PageContainer):
         self.input_bar.voice_button.setEnabled(False)
         chat_layout.addWidget(self.input_bar)
 
-        scene_wrap = QVBoxLayout()
+        scene_panel = PoeticPanel(radius=30)
+        scene_wrap = QVBoxLayout(scene_panel)
+        scene_wrap.setContentsMargins(22, 22, 22, 22)
+        scene_wrap.setSpacing(12)
         scene_title = QLabel("Lumi")
         scene_title.setFont(QFont("Microsoft YaHei UI", 24, QFont.Weight.DemiBold))
         scene_hint = QLabel("她会一直在这里。")
         scene_hint.setStyleSheet("color: rgba(238,243,245,0.62);")
         scene = CompanionScene("chat")
         scene.setMinimumWidth(360)
+        scene.setMinimumHeight(500)
         scene_wrap.addWidget(scene_title)
         scene_wrap.addWidget(scene_hint)
         scene_wrap.addWidget(scene, 1)
 
         body.addWidget(chat_panel, 7)
-        body.addLayout(scene_wrap, 5)
+        body.addWidget(scene_panel, 5)
         self.root.addLayout(body, 1)
 
     def set_running(self, running: bool) -> None:

@@ -15,9 +15,9 @@ class AnimatedButton(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMinimumHeight(42)
         self._shadow = QGraphicsDropShadowEffect(self)
-        self._shadow.setBlurRadius(20)
-        self._shadow.setOffset(0, 8)
-        self._shadow.setColor(QColor(4, 17, 29, 55))
+        self._shadow.setBlurRadius(16)
+        self._shadow.setOffset(0, 7)
+        self._shadow.setColor(QColor(0, 0, 0, 92))
         self.setGraphicsEffect(self._shadow)
         self._style()
 
@@ -28,28 +28,37 @@ class AnimatedButton(QPushButton):
     @glow.setter
     def glow(self, value: float) -> None:
         self._glow = value
-        self._shadow.setBlurRadius(20 + int(value * 12))
+        self._shadow.setBlurRadius(16 + int(value * 12))
         self._style()
 
     def _style(self) -> None:
-        bg = "rgba(239,246,248,0.20)" if self.primary else f"rgba(239,246,248,{0.10 + self._glow * 0.06:.3f})"
+        bg = (
+            f"rgba(226,118,79,{0.84 + self._glow * 0.08:.3f})"
+            if self.primary
+            else f"rgba(18,29,46,{0.72 + self._glow * 0.08:.3f})"
+        )
+        border = "rgba(244,164,118,0.58)" if self.primary else f"rgba(180,204,228,{0.18 + self._glow * 0.16:.3f})"
         self.setStyleSheet(
             f"""
             QPushButton {{
                 background-color: {bg};
-                border: 1px solid rgba(255,255,255,{0.14 + self._glow * 0.10:.3f});
-                border-radius: 18px;
+                border: 1px solid {border};
+                border-radius: 14px;
                 padding: 8px 15px;
                 color: {Theme.text};
-                font-weight: 650;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{
+                border-color: rgba(244,164,118,0.72);
             }}
             QPushButton:pressed {{
                 padding-top: 9px;
                 padding-bottom: 7px;
             }}
             QPushButton:disabled {{
-                color: rgba(238,243,245,0.36);
-                background-color: rgba(239,246,248,0.05);
+                color: rgba(244,248,251,0.38);
+                background-color: rgba(18,29,46,0.38);
+                border-color: rgba(180,204,228,0.08);
             }}
             """
         )
@@ -87,7 +96,7 @@ class NavigationItem(QPushButton):
         self.label = text
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMinimumSize(QSize(92, 48))
+        self.setMinimumSize(QSize(100, 48))
         self.setText(f"{icon}  {text}")
         self.setToolTip(text)
         self._style()
@@ -101,22 +110,22 @@ class NavigationItem(QPushButton):
             QPushButton {{
                 background-color: transparent;
                 border: 1px solid transparent;
-                border-radius: 14px;
-                padding: 7px 10px;
-                color: rgba(238,243,245,0.68);
+                border-radius: 13px;
+                padding: 8px 11px;
+                color: rgba(244,248,251,0.70);
                 font-size: 13px;
-                font-weight: 650;
+                font-weight: 700;
                 text-align: left;
             }}
             QPushButton:hover {{
                 color: {Theme.text};
-                background-color: rgba(239,246,248,0.10);
-                border-color: rgba(255,255,255,0.10);
+                background-color: rgba(18,29,46,0.74);
+                border-color: rgba(180,204,228,0.18);
             }}
             QPushButton:checked {{
                 color: {Theme.text};
-                background-color: rgba(239,246,248,0.18);
-                border-color: rgba(255,255,255,0.18);
+                background-color: rgba(226,118,79,0.20);
+                border-color: rgba(226,118,79,0.52);
             }}
             """
         )

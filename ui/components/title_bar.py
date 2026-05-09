@@ -22,7 +22,7 @@ class TitleBar(QWidget):
         title = QLabel("LumiMate")
         title.setFont(QFont("Microsoft YaHei UI", 13, QFont.Weight.DemiBold))
         subtitle = QLabel("静夜陪伴空间")
-        subtitle.setStyleSheet(f"color: rgba(238,243,245,0.55); font-size: 12px;")
+        subtitle.setStyleSheet(f"color: rgba(244,248,251,0.56); font-size: 12px;")
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addStretch()
@@ -41,12 +41,12 @@ class TitleBar(QWidget):
         button = QPushButton(text)
         button.setFixedSize(32, 26)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
-        hover = "rgba(201,149,166,0.26)" if danger else "rgba(239,246,248,0.12)"
+        hover = "rgba(226,118,79,0.28)" if danger else "rgba(180,204,228,0.12)"
         button.setStyleSheet(
             f"""
             QPushButton {{
-                background-color: rgba(239,246,248,0.06);
-                border: 1px solid rgba(255,255,255,0.08);
+                background-color: rgba(18,29,46,0.58);
+                border: 1px solid rgba(180,204,228,0.12);
                 border-radius: 10px;
                 color: {Theme.text};
                 font-weight: 700;

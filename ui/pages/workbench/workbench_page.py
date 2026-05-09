@@ -2,21 +2,42 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QProgressBar, QPushButton, QSlider, QTextEdit, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSizePolicy,
+    QSlider,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from config import AssistantConfig
-from ui.components import FloatingInput, GlassButton, GlowButton, PageContainer, PoeticPanel, SceneCard
+from ui.components import CompanionScene, FloatingInput, GlassButton, GlowButton, ModernScrollArea, PageContainer, PoeticPanel, SceneCard
 from ui.themes import Theme
 
 
 class WorkbenchPage(PageContainer):
     def __init__(self, parent=None):
-        super().__init__(parent, margins=(44, 34, 42, 34), spacing=18)
+        super().__init__(parent, margins=(0, 0, 0, 0), spacing=0)
         self._build_ui()
         self.set_config(AssistantConfig.defaults())
         self.connect_internal_signals()
 
     def _build_ui(self) -> None:
+        self.scroll_area = ModernScrollArea()
+        self.scroll_content = QWidget()
+        self.scroll_content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(self.scroll_content)
+        content_layout.setContentsMargins(44, 34, 42, 34)
+        content_layout.setSpacing(18)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.root.addWidget(self.scroll_area)
+        self.root = content_layout
+
         title = QLabel("工作台")
         title.setFont(QFont("Microsoft YaHei UI", 30, QFont.Weight.DemiBold))
         subtitle = QLabel("整理 Lumi 的核心能力，复杂参数默认安静地收起来。")
@@ -33,6 +54,14 @@ class WorkbenchPage(PageContainer):
         top.addWidget(self.voice_state_card)
         top.addWidget(self.plugin_state_card)
         self.root.addLayout(top)
+
+        workbench_stage = PoeticPanel(radius=26)
+        workbench_stage_layout = QVBoxLayout(workbench_stage)
+        workbench_stage_layout.setContentsMargins(0, 0, 0, 0)
+        workbench_scene = CompanionScene("workbench")
+        workbench_scene.setFixedHeight(150)
+        workbench_stage_layout.addWidget(workbench_scene)
+        self.root.addWidget(workbench_stage)
 
         self.progress_label = QLabel("待机")
         self.progress_label.setStyleSheet("color: rgba(238,243,245,0.68);")
@@ -56,12 +85,19 @@ class WorkbenchPage(PageContainer):
         self.root.addLayout(actions)
 
         self.advanced_panel = PoeticPanel(radius=30)
+        self.advanced_panel.setMinimumHeight(410)
+        self.advanced_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         advanced_layout = QVBoxLayout(self.advanced_panel)
-        advanced_layout.setContentsMargins(20, 18, 20, 18)
-        advanced_layout.setSpacing(16)
+        advanced_layout.setContentsMargins(20, 20, 20, 20)
+        advanced_layout.setSpacing(18)
         grid = QGridLayout()
-        grid.setHorizontalSpacing(14)
-        grid.setVerticalSpacing(12)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(10)
+        grid.setColumnMinimumWidth(0, 88)
+        grid.setColumnMinimumWidth(2, 82)
+        grid.setColumnStretch(1, 1)
+        for row in range(6):
+            grid.setRowMinimumHeight(row, 42)
 
         self.asr_edit = FloatingInput()
         self.llm_edit = FloatingInput()
@@ -83,8 +119,11 @@ class WorkbenchPage(PageContainer):
         advanced_layout.addLayout(grid)
 
         controls = QGridLayout()
-        controls.setHorizontalSpacing(14)
-        controls.setVerticalSpacing(10)
+        controls.setHorizontalSpacing(16)
+        controls.setVerticalSpacing(12)
+        controls.setColumnMinimumWidth(0, 88)
+        controls.setColumnMinimumWidth(2, 64)
+        controls.setColumnStretch(1, 1)
         self.duration_slider = QSlider(Qt.Orientation.Horizontal)
         self.duration_slider.setRange(1, 10)
         self.duration_label = QLabel("3 秒")
@@ -93,6 +132,8 @@ class WorkbenchPage(PageContainer):
         self.energy_label = QLabel("0.005")
         self.token_edit = FloatingInput()
         self.token_edit.setFixedWidth(120)
+        self.duration_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.energy_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         controls.addWidget(QLabel("录音片段"), 0, 0)
         controls.addWidget(self.duration_slider, 0, 1)
         controls.addWidget(self.duration_label, 0, 2)
@@ -117,9 +158,9 @@ class WorkbenchPage(PageContainer):
         self.log_text.setStyleSheet(
             f"""
             QTextEdit {{
-                background-color: rgba(7, 24, 39, 0.36);
-                border: 1px solid rgba(255,255,255,0.10);
-                border-radius: 20px;
+                background-color: rgba(3, 8, 20, 0.48);
+                border: 1px solid rgba(180,204,228,0.14);
+                border-radius: 18px;
                 padding: 12px;
                 color: {Theme.text};
                 font-family: Consolas, "Microsoft YaHei UI";
@@ -135,11 +176,17 @@ class WorkbenchPage(PageContainer):
     def _add_field(self, grid: QGridLayout, row: int, label_text: str, edit: FloatingInput, button: GlassButton | None = None) -> None:
         label = QLabel(label_text)
         label.setStyleSheet("color: rgba(238,243,245,0.66); font-weight: 650;")
+        label.setMinimumWidth(88)
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        edit.setMinimumWidth(280)
+        edit.setFixedHeight(40)
         grid.addWidget(label, row, 0)
-        grid.addWidget(edit, row, 1)
         if button:
-            button.setFixedWidth(74)
+            grid.addWidget(edit, row, 1)
+            button.setFixedSize(74, 40)
             grid.addWidget(button, row, 2)
+        else:
+            grid.addWidget(edit, row, 1, 1, 2)
 
     def connect_internal_signals(self) -> None:
         self.duration_slider.valueChanged.connect(lambda value: self.duration_label.setText(f"{value} 秒"))

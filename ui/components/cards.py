@@ -24,8 +24,8 @@ class GlassCard(QFrame):
         self._style(False)
 
     def _style(self, hover: bool) -> None:
-        bg = "rgba(239, 246, 248, 0.13)" if hover else "rgba(239, 246, 248, 0.09)"
-        border = "rgba(255,255,255,0.20)" if hover else Theme.line
+        bg = "rgba(18, 29, 46, 0.84)" if hover else "rgba(18, 29, 46, 0.72)"
+        border = "rgba(226,118,79,0.42)" if hover else Theme.line
         self.setStyleSheet(
             f"""
             QFrame#glassCard {{
@@ -62,7 +62,7 @@ class FrostPanel(GlassCard):
         self.setStyleSheet(
             f"""
             QFrame#frostPanel {{
-                background-color: rgba(239, 246, 248, 0.10);
+                background-color: rgba(18, 29, 46, 0.76);
                 border: 1px solid {Theme.line};
                 border-radius: {self.radius}px;
                 padding: {self.padding}px;
