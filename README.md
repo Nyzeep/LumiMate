@@ -1,33 +1,31 @@
 # LumiMate
 
-LumiMate 是一个基于 Python 与 PyQt6 构建的桌面 AI Companion 应用。
+LumiMate 是一个基于 Python 和 PyQt6 的桌面 AI Companion 应用。当前版本包含桌面 UI、语音对话入口、模型工作台，以及面向后续角色资源接入的界面结构。
 
-它的目标不是做传统 AI 控制台，而是提供一个安静、沉浸、带有情绪氛围的数字陪伴空间。当前版本包含诗性化的桌面 UI、语音对话入口、模型工作台，以及面向未来 Live2D / Spine 角色接入的陪伴空间架构。
+## 运行
 
-## 功能概览
+建议先创建虚拟环境并安装依赖：
 
-- PyQt6 无边框桌面窗口
-- 代码绘制的静夜梦境背景与 Companion 场景
-- 首页、对话、陪伴、工作台、设置五页结构
-- ASR / LLM / TTS 模型加载生命周期管理
-- 语音对话启动、停止与日志反馈
-- 面向 Live2D / Spine 的 UI 预留结构
+```powershell
+python -m venv ..\.venv
+..\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-## 运行方式
-
-建议使用项目虚拟环境运行：
+启动应用：
 
 ```bat
 run_lumi.bat
 ```
 
-或手动执行：
+也可以直接运行：
 
 ```powershell
 python main.py
 ```
 
-## 目录说明
+`run_lumi.bat` 会优先使用项目上一级的 `D:\Pycharm_Code\.venv`，如果不存在才回退到项目根目录下的 `.venv`、系统 `python` 或 `py -3`。
+
+## 目录
 
 ```text
 config/       应用配置与默认模型路径
@@ -38,9 +36,11 @@ ui/           PyQt6 界面、组件、页面、主题与效果
 resources/    参考音频等轻量资源
 ```
 
-## 注意
+## 额外运行依赖
 
-以下目录包含本地模型、运行数据或大型预编译依赖，默认不会提交到 Git：
+模型加载阶段还依赖本地可用的 ASR / TTS 包，例如 `qwen_asr` 和 `genie_tts`，以及对应模型文件。若只启动界面，安装 `requirements.txt` 即可；若要完整语音对话，请确认 `models/`、`GenieData/` 和 TTS 预编译资源路径齐全。
+
+以下目录通常包含本地模型、运行数据或大型预编译依赖，默认不会提交到 Git：
 
 - `GenieData/`
 - `models/`
