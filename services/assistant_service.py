@@ -25,6 +25,7 @@ class AssistantService(QThread):
         self.state = "idle"
         self._mutex = QMutex()
         self._text_thread: threading.Thread | None = None
+        self._maintenance_thread: threading.Thread | None = None
 
     def set_state(self, state: str, message: str) -> None:
         self.state = state
@@ -35,7 +36,7 @@ class AssistantService(QThread):
         from core import VoiceAssistant
 
         try:
-            self.set_state("validating", "正在准备模型加载。")
+            self.set_state("validating", "Preparing model load...")
             self.assistant = VoiceAssistant(
                 self.config.to_core_dict(),
                 on_user_text=self.user_text.emit,
@@ -47,23 +48,24 @@ class AssistantService(QThread):
             self.is_ready = self.assistant.load_models(progress_callback=self._progress)
             if self.is_ready:
                 elapsed = time.perf_counter() - start
-                self.set_state("ready", f"模型已就绪，用时 {elapsed:.1f} 秒。")
+                self.set_state("ready", f"Models ready in {elapsed:.1f}s.")
                 self.loaded.emit(True)
             else:
-                self.set_state("failed", "模型加载没有完成，请查看运行记录。")
+                self.set_state("failed", "Model loading did not complete. Check the runtime log.")
                 self.loaded.emit(False)
 
-            while self.is_ready and not self.isInterruptionRequested():
+            while not self.isInterruptionRequested():
                 self.msleep(120)
         except Exception as exc:
             self.is_ready = False
-            self.set_state("failed", f"模型启动失败：{exc}")
+            self.set_state("failed", f"Model service failed: {exc}")
             self.loaded.emit(False)
         finally:
             if self.assistant:
-                self.assistant.stop()
-            if self.state not in {"failed", "idle"} and not self.is_ready:
-                self.set_state("idle", "模型服务已停止。")
+                self.assistant.release_models()
+            self.is_ready = False
+            if self.state not in {"failed", "idle"}:
+                self.set_state("idle", "Model service stopped.")
 
     def _progress(self, step: int, total: int, message: str) -> None:
         self.progress.emit(step, total, message)
@@ -78,14 +80,14 @@ class AssistantService(QThread):
     def start_conversation(self) -> bool:
         with QMutexLocker(self._mutex):
             if not self.assistant or not self.is_ready:
-                self.log.emit("模型还没有准备好。")
+                self.log.emit("Models are not ready.")
                 return False
             if self.assistant.running:
-                self.state_changed.emit("running", "Lumi 已经在聆听。")
+                self.state_changed.emit("running", "Lumi is already listening.")
                 return True
             started = self.assistant.start()
             if started:
-                self.state_changed.emit("running", "Lumi 正在聆听。")
+                self.state_changed.emit("running", "Lumi is listening.")
             return started
 
     def send_text(self, text: str) -> bool:
@@ -95,12 +97,12 @@ class AssistantService(QThread):
 
         with QMutexLocker(self._mutex):
             if not self.assistant or not self.is_ready:
-                message = "模型还没有准备好。"
+                message = "Models are not ready."
                 self.log.emit(message)
                 self.text_failed.emit(message)
                 return False
             if self._text_thread and self._text_thread.is_alive():
-                message = "Lumi 正在组织上一段回应，请稍候。"
+                message = "Lumi is still responding. Please wait."
                 self.log.emit(message)
                 self.text_failed.emit(message)
                 return False
@@ -108,10 +110,10 @@ class AssistantService(QThread):
 
         def worker() -> None:
             try:
-                self.log.emit("Lumi 正在组织回应。")
+                self.log.emit("Lumi is composing a response...")
                 assistant.respond_to_text(text, speak=True, emit_user=True)
             except Exception as exc:
-                message = f"文字对话失败：{exc}"
+                message = f"Text conversation failed: {exc}"
                 self.log.emit(message)
                 self.text_failed.emit(message)
 
@@ -119,17 +121,75 @@ class AssistantService(QThread):
         self._text_thread.start()
         return True
 
+    def switch_models(self, config: AssistantConfig) -> bool:
+        with QMutexLocker(self._mutex):
+            if not self.assistant or not self.isRunning():
+                self.log.emit("Start the model service before switching models.")
+                return False
+            if self._maintenance_thread and self._maintenance_thread.is_alive():
+                self.log.emit("A maintenance task is already running.")
+                return False
+            assistant = self.assistant
+
+        def worker() -> None:
+            try:
+                self.set_state("switching", "Switching models...")
+                self.is_ready = False
+                assistant.stop()
+                success = assistant.switch_models(config.to_core_dict(), progress_callback=self._progress)
+                self.config = config
+                self.is_ready = success
+                if success:
+                    self.set_state("ready", "Models switched and ready.")
+                else:
+                    self.set_state("failed", "Model switch failed.")
+                self.loaded.emit(success)
+            except Exception as exc:
+                self.is_ready = False
+                self.set_state("failed", f"Model switch failed: {exc}")
+                self.loaded.emit(False)
+
+        self._maintenance_thread = threading.Thread(target=worker, daemon=True)
+        self._maintenance_thread.start()
+        return True
+
+    def release_cache(self) -> bool:
+        with QMutexLocker(self._mutex):
+            if self._maintenance_thread and self._maintenance_thread.is_alive():
+                self.log.emit("A maintenance task is already running.")
+                return False
+            assistant = self.assistant
+
+        def worker() -> None:
+            try:
+                self.set_state("releasing_cache", "Releasing cache and VRAM...")
+                if assistant:
+                    assistant.release_cache()
+                else:
+                    from services.model_manager import ModelManager
+
+                    ModelManager(self.log.emit).clear_cache()
+                self.set_state("ready" if self.is_ready else "idle", "Cache released.")
+            except Exception as exc:
+                self.set_state("failed", f"Cache release failed: {exc}")
+
+        self._maintenance_thread = threading.Thread(target=worker, daemon=True)
+        self._maintenance_thread.start()
+        return True
+
     def stop_conversation(self) -> None:
         with QMutexLocker(self._mutex):
             if self.assistant:
-                self.state_changed.emit("stopping", "正在停止语音对话。")
+                self.state_changed.emit("stopping", "Stopping voice conversation...")
                 self.assistant.stop()
                 if self.is_ready:
-                    self.state_changed.emit("ready", "模型已就绪。")
+                    self.state_changed.emit("ready", "Models are ready.")
 
     def shutdown(self) -> None:
         self.requestInterruption()
         self.stop_conversation()
         if self._text_thread and self._text_thread.is_alive():
             self._text_thread.join(timeout=1.0)
+        if self._maintenance_thread and self._maintenance_thread.is_alive():
+            self._maintenance_thread.join(timeout=2.0)
         self.wait(3500)

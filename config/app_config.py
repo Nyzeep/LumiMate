@@ -8,6 +8,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESOURCES_ROOT = PROJECT_ROOT / "resources"
 PROMPT_WAV_CONFIG = RESOURCES_ROOT / "prompt_wav.json"
+USER_SETTINGS_PATH = PROJECT_ROOT / "config" / "user_settings.json"
+APP_VERSION = "0.1.0"
+APP_AUTHOR = "LumiMate Team"
+APP_PHILOSOPHY = "Minimal, efficient, modular desktop AI companion."
+UPDATE_MANIFEST_URL = ""
 DEFAULT_REF_WAV = "zh_vo_Main_Linaxita_2_1_10_26.wav"
 DEFAULT_REF_TEXT = "在此之前，请您务必继续享受旅居拉古那的时光。"
 
@@ -35,6 +40,61 @@ class ProjectPaths:
     llm_model: Path = PROJECT_ROOT / "models" / "llm_model" / "Qwen2.5"
     tts_model: Path = PROJECT_ROOT / "models" / "tts_model" / "菲比"
     reference_audio: Path = PROJECT_ROOT / "resources" / "zh_vo_Main_Linaxita_2_1_10_26.wav"
+
+
+@dataclass(slots=True)
+class UserSettings:
+    language: str = "zh-CN"
+    check_update_on_startup: bool = False
+    startup_page: str = "home"
+
+    @classmethod
+    def load(cls) -> "UserSettings":
+        try:
+            payload = json.loads(USER_SETTINGS_PATH.read_text(encoding="utf-8"))
+            return cls(
+                language=str(payload.get("language") or "zh-CN"),
+                check_update_on_startup=bool(payload.get("check_update_on_startup", False)),
+                startup_page=str(payload.get("startup_page") or "home"),
+            )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            return cls()
+
+    def save(self) -> bool:
+        try:
+            USER_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            USER_SETTINGS_PATH.write_text(
+                json.dumps(
+                    {
+                        "language": self.language,
+                        "check_update_on_startup": self.check_update_on_startup,
+                        "startup_page": self.startup_page,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            return True
+        except OSError:
+            return False
+
+
+@dataclass(slots=True)
+class ReferenceAudioConfig:
+    path: str
+    text: str
+
+    def validate(self) -> list[str]:
+        issues: list[str] = []
+        audio_path = Path(self.path)
+        if not audio_path.exists():
+            issues.append(f"Reference audio not found: {audio_path}")
+        elif audio_path.suffix.lower() not in {".wav", ".mp3", ".flac"}:
+            issues.append("Reference audio must be .wav, .mp3, or .flac.")
+        if not self.text.strip():
+            issues.append("Reference audio text cannot be empty.")
+        return issues
 
 
 @dataclass(slots=True)
@@ -81,3 +141,6 @@ class AssistantConfig:
             "top_p": self.top_p,
             "repetition_penalty": self.repetition_penalty,
         }
+
+    def reference_audio(self) -> ReferenceAudioConfig:
+        return ReferenceAudioConfig(self.ref_audio_path, self.ref_text)

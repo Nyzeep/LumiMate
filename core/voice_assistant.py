@@ -5,6 +5,8 @@ import threading
 
 import numpy as np
 
+from services.model_manager import ModelManager
+
 
 class VoiceAssistant:
     def __init__(self, config, on_user_text=None, on_assistant_text=None, on_log=None, on_state=None):
@@ -15,6 +17,7 @@ class VoiceAssistant:
         self.on_state = on_state
         self.running = False
         self.thread: threading.Thread | None = None
+        self.models = ModelManager(self.log)
         self.asr = None
         self.tokenizer = None
         self.llm = None
@@ -35,61 +38,31 @@ class VoiceAssistant:
             self.on_state(state, message)
 
     def load_models(self, progress_callback=None) -> bool:
-        try:
-            import torch
-            from qwen_asr import Qwen3ASRModel
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-            import genie_tts as genie
-        except Exception as exc:
-            self.log(f"模型依赖导入失败：{exc}")
-            return False
+        loaded = self.models.load(self.config, progress_callback)
+        self._sync_model_refs()
+        return loaded
 
-        try:
-            self.genie = genie
+    def switch_models(self, config, progress_callback=None) -> bool:
+        self.stop()
+        self.config = config
+        switched = self.models.switch(config, progress_callback)
+        self._sync_model_refs()
+        return switched
 
-            if progress_callback:
-                progress_callback(1, 4, "正在加载 ASR 模型。")
-            self.asr = Qwen3ASRModel.from_pretrained(
-                self.config["asr_path"],
-                dtype=torch.bfloat16,
-                device_map="auto",
-                max_new_tokens=256,
-            )
-            self.log("ASR 模型加载完成。")
+    def release_cache(self) -> None:
+        self.models.clear_cache()
 
-            if progress_callback:
-                progress_callback(2, 4, "正在加载 LLM 模型。")
-            self.tokenizer = AutoTokenizer.from_pretrained(self.config["llm_path"], trust_remote_code=True)
-            self.llm = AutoModelForCausalLM.from_pretrained(
-                self.config["llm_path"],
-                device_map="auto",
-                torch_dtype="auto",
-                trust_remote_code=True,
-            )
-            device = getattr(self.llm, "device", "auto")
-            self.log(f"LLM 模型加载完成，设备：{device}")
+    def release_models(self) -> None:
+        self.stop()
+        self.models.unload()
+        self._sync_model_refs()
 
-            if progress_callback:
-                progress_callback(3, 4, "正在初始化 TTS。")
-            genie.load_character(
-                character_name=self.config["tts_character"],
-                onnx_model_dir=self.config["tts_model_dir"],
-                language="zh",
-            )
-
-            if progress_callback:
-                progress_callback(4, 4, "正在绑定参考音频。")
-            genie.set_reference_audio(
-                character_name=self.config["tts_character"],
-                audio_path=self.config["ref_audio_path"],
-                audio_text=self.config["ref_text"],
-            )
-            self.tts_ready = True
-            self.log("TTS 初始化完成。")
-            return True
-        except Exception as exc:
-            self.log(f"模型加载失败：{exc}")
-            return False
+    def _sync_model_refs(self) -> None:
+        self.asr = self.models.asr
+        self.tokenizer = self.models.tokenizer
+        self.llm = self.models.llm
+        self.genie = self.models.genie
+        self.tts_ready = self.models.tts_ready
 
     def llm_generate(self, user_text: str) -> str:
         self.messages.append({"role": "user", "content": user_text})
@@ -116,16 +89,16 @@ class VoiceAssistant:
         if not user_text:
             return ""
         if not self.llm or not self.tokenizer:
-            raise RuntimeError("模型还没有准备好。")
+            raise RuntimeError("Models are not ready.")
 
         if emit_user:
-            self.log(f"你：{user_text}")
+            self.log(f"You: {user_text}")
             if self.on_user_text:
                 self.on_user_text(user_text)
 
         with self._response_lock:
             assistant_text = self.llm_generate(user_text)
-            self.log(f"Lumi：{assistant_text}")
+            self.log(f"Lumi: {assistant_text}")
             if self.on_assistant_text:
                 self.on_assistant_text(assistant_text)
             if speak:
@@ -135,10 +108,9 @@ class VoiceAssistant:
     def safe_tts(self, text: str) -> None:
         if not text or not self.tts_ready or self.genie is None:
             return
-        text = text.replace("嗯", "恩").replace("啊", "呀").replace("呃", "额")
-        text = re.sub(r"[^\u4e00-\u9fa5，。！？、,.!?]", "", text)
+        text = re.sub(r"[^\u4e00-\u9fa5\uff0c\u3002\uff01\uff1f\u3001.!?]", "", text)
         if len(text) < 2:
-            text = "好的。"
+            text = "\u597d\u7684\u3002"
         try:
             self.genie.tts(
                 character_name=self.config["tts_character"],
@@ -149,7 +121,7 @@ class VoiceAssistant:
             )
             self.genie.wait_for_playback_done()
         except Exception as exc:
-            self.log(f"TTS 播放失败：{exc}")
+            self.log(f"TTS playback failed: {exc}")
 
     def has_energy(self, audio) -> bool:
         threshold = self.config.get("energy_threshold", 0.005)
@@ -159,7 +131,7 @@ class VoiceAssistant:
         try:
             import sounddevice as sd
         except Exception as exc:
-            self.log(f"录音设备初始化失败：{exc}")
+            self.log(f"Recording device init failed: {exc}")
             self.running = False
             return
 
@@ -168,48 +140,47 @@ class VoiceAssistant:
         chunk_size = int(sample_rate * chunk_sec)
 
         while self.running:
-            self.log(f"正在聆听...（{chunk_sec} 秒）")
+            self.log(f"Listening... ({chunk_sec}s)")
             try:
                 audio_data = sd.rec(chunk_size, samplerate=sample_rate, channels=1, dtype="float32")
                 sd.wait()
                 audio_data = audio_data.flatten()
             except Exception as exc:
-                self.log(f"录音失败：{exc}")
+                self.log(f"Recording failed: {exc}")
                 continue
 
             if not self.has_energy(audio_data):
-                self.log("没有听到清晰的声音。")
+                self.log("No clear voice detected.")
                 continue
 
             try:
                 result_list = self.asr.transcribe((audio_data, sample_rate))
                 user_text = result_list[0].text.strip()
             except Exception as exc:
-                self.log(f"语音识别失败：{exc}")
+                self.log(f"Speech recognition failed: {exc}")
                 continue
 
             if not user_text:
-                self.log("识别结果为空，请再说一次。")
+                self.log("Recognition result was empty.")
                 continue
 
-            self.log(f"你：{user_text}")
+            self.log(f"You: {user_text}")
             if self.on_user_text:
                 self.on_user_text(user_text)
 
             try:
                 self.respond_to_text(user_text, speak=True, emit_user=False)
             except Exception as exc:
-                self.log(f"Lumi 生成回复失败：{exc}")
-                continue
+                self.log(f"Lumi response failed: {exc}")
 
-        self.log("对话已停止。")
+        self.log("Conversation stopped.")
 
     def start(self) -> bool:
         with self._lock:
             if self.running:
                 return True
             if not all([self.asr, self.llm, self.tts_ready]):
-                self.log("请先加载模型。")
+                self.log("Load models first.")
                 return False
             self.running = True
             self.thread = threading.Thread(target=self._run_loop, daemon=True)

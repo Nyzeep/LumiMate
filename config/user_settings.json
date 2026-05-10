@@ -1,0 +1,5 @@
+{
+  "language": "zh-CN",
+  "check_update_on_startup": true,
+  "startup_page": "workbench"
+}
