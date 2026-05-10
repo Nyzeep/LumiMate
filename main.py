@@ -24,14 +24,14 @@ def main() -> int:
     app_args = [arg for arg in sys.argv if arg != "--check"]
 
     try:
-        from PyQt6.QtCore import QUrl
-        from PyQt6.QtGui import QGuiApplication
-        from PyQt6.QtQml import QQmlApplicationEngine
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QGuiApplication
+        from PySide6.QtQml import QQmlApplicationEngine
     except ModuleNotFoundError as exc:
-        if exc.name != "PyQt6":
+        if exc.name != "PySide6":
             raise
         print(
-            "Unable to start LumiMate: PyQt6 with QtQuick/QML support is not installed.\n"
+            "Unable to start LumiMate: PySide6 with QtQuick/QML support is not installed.\n"
             f"Current interpreter: {sys.executable}\n"
             f"Preferred interpreter: {_preferred_python()}\n"
             "Run: python -m pip install -r requirements.txt"
@@ -64,7 +64,7 @@ def main() -> int:
     context.setContextProperty("emotionBridge", emotion_bridge)
     context.setContextProperty("companionBridge", companion_bridge)
 
-    main_qml = qml_root / "Main.qml"
+    main_qml = qml_root / "main.qml"
     engine.load(QUrl.fromLocalFile(str(main_qml)))
     if not engine.rootObjects():
         print(f"Unable to load QML root: {main_qml}")

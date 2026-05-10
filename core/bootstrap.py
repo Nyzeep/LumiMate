@@ -18,10 +18,24 @@ class BootstrapResult:
 
 class AppBootstrap:
     @staticmethod
+    def preferred_venv(project_root: Path) -> Path:
+        candidates = [project_root / ".venv", project_root.parent / ".venv"]
+        for venv_root in candidates:
+            python_path = (
+                venv_root / "Scripts" / "python.exe"
+                if os.name == "nt"
+                else venv_root / "bin" / "python"
+            )
+            if python_path.exists():
+                return venv_root
+        return project_root / ".venv"
+
+    @staticmethod
     def preferred_python(project_root: Path) -> Path:
+        venv_root = AppBootstrap.preferred_venv(project_root)
         if os.name == "nt":
-            return project_root.parent / ".venv" / "Scripts" / "python.exe"
-        return project_root.parent / ".venv" / "bin" / "python"
+            return venv_root / "Scripts" / "python.exe"
+        return venv_root / "bin" / "python"
 
     @staticmethod
     def ensure_environment(project_root: Path) -> BootstrapResult:
@@ -32,7 +46,7 @@ class AppBootstrap:
         try:
             created_venv = False
             if not preferred.exists():
-                venv.EnvBuilder(with_pip=True, clear=False).create(str(preferred.parents[1] if os.name == "nt" else preferred.parents[1]))
+                venv.EnvBuilder(with_pip=True, clear=False).create(str(AppBootstrap.preferred_venv(project_root)))
                 created_venv = True
         except Exception as exc:
             return BootstrapResult(False, message=f"Failed to create virtual environment: {exc}")

@@ -9,15 +9,15 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from PyQt6.QtCore import QProcess, QThread, pyqtSignal
+from PySide6.QtCore import QProcess, QThread, Signal
 
 from config import PROJECT_ROOT
 from core.integrity import DEFAULT_CORE_FILES
 
 
 class UpdateService(QThread):
-    progress = pyqtSignal(str)
-    finished = pyqtSignal(bool, str)
+    progress = Signal(str)
+    finished = Signal(bool, str)
 
     def __init__(self, manifest_url: str = "", project_root: Path | None = None):
         super().__init__()

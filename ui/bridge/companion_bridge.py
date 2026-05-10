@@ -1,37 +1,58 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
 
 class CompanionBridge(QObject):
-    stageModeChanged = pyqtSignal()
-    speechLevelChanged = pyqtSignal()
-    live2dReadyChanged = pyqtSignal()
+    stageModeChanged = Signal()
+    speechLevelChanged = Signal()
+    rendererChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._stage_mode = "presence"
         self._speech_level = 0.0
-        self._live2d_ready = False
+        self._renderer_ready = False
+        self._renderer_type = "adapter"
+        self._renderer_capability = "Live2D / Spine placeholder"
 
-    @pyqtProperty(str, notify=stageModeChanged)
+    @Property(str, notify=stageModeChanged)
     def stageMode(self) -> str:
         return self._stage_mode
 
-    @pyqtProperty(float, notify=speechLevelChanged)
+    @Property(float, notify=speechLevelChanged)
     def speechLevel(self) -> float:
         return self._speech_level
 
-    @pyqtProperty(bool, notify=live2dReadyChanged)
-    def live2dReady(self) -> bool:
-        return self._live2d_ready
+    @Property(bool, notify=rendererChanged)
+    def rendererReady(self) -> bool:
+        return self._renderer_ready
 
-    @pyqtSlot(str)
+    @Property(str, notify=rendererChanged)
+    def rendererType(self) -> str:
+        return self._renderer_type
+
+    @Property(str, notify=rendererChanged)
+    def rendererCapability(self) -> str:
+        return self._renderer_capability
+
+    @Slot(str)
     def setStageMode(self, mode: str) -> None:
-        self._stage_mode = mode or "presence"
-        self.stageModeChanged.emit()
+        mode = mode or "presence"
+        if mode != self._stage_mode:
+            self._stage_mode = mode
+            self.stageModeChanged.emit()
 
-    @pyqtSlot(float)
+    @Slot(float)
     def setSpeechLevel(self, level: float) -> None:
-        self._speech_level = max(0.0, min(1.0, float(level)))
-        self.speechLevelChanged.emit()
+        level = max(0.0, min(1.0, float(level)))
+        if level != self._speech_level:
+            self._speech_level = level
+            self.speechLevelChanged.emit()
+
+    @Slot(bool, str, str)
+    def setRendererState(self, ready: bool, renderer_type: str, capability: str) -> None:
+        self._renderer_ready = bool(ready)
+        self._renderer_type = renderer_type or "adapter"
+        self._renderer_capability = capability or "Live2D / Spine placeholder"
+        self.rendererChanged.emit()

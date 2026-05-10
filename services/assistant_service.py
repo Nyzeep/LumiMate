@@ -3,19 +3,19 @@ from __future__ import annotations
 import threading
 import time
 
-from PyQt6.QtCore import QMutex, QMutexLocker, QThread, pyqtSignal
+from PySide6.QtCore import QMutex, QMutexLocker, QThread, Signal
 
 from config import AssistantConfig
 
 
 class AssistantService(QThread):
-    log = pyqtSignal(str)
-    progress = pyqtSignal(int, int, str)
-    loaded = pyqtSignal(bool)
-    state_changed = pyqtSignal(str, str)
-    user_text = pyqtSignal(str)
-    assistant_text = pyqtSignal(str)
-    text_failed = pyqtSignal(str)
+    log = Signal(str)
+    progress = Signal(int, int, str)
+    loaded = Signal(bool)
+    state_changed = Signal(str, str)
+    user_text = Signal(str)
+    assistant_text = Signal(str)
+    text_failed = Signal(str)
 
     def __init__(self, config: AssistantConfig):
         super().__init__()
@@ -83,11 +83,11 @@ class AssistantService(QThread):
                 self.log.emit("Models are not ready.")
                 return False
             if self.assistant.running:
-                self.state_changed.emit("running", "Lumi is already listening.")
+                self.state_changed.emit("listening", "Lumi is already listening.")
                 return True
             started = self.assistant.start()
             if started:
-                self.state_changed.emit("running", "Lumi is listening.")
+                self.state_changed.emit("listening", "Lumi is listening.")
             return started
 
     def send_text(self, text: str) -> bool:
@@ -110,12 +110,16 @@ class AssistantService(QThread):
 
         def worker() -> None:
             try:
+                self.state_changed.emit("thinking", "Lumi is composing a response.")
                 self.log.emit("Lumi is composing a response...")
                 assistant.respond_to_text(text, speak=True, emit_user=True)
+                self.state_changed.emit("replying", "Lumi is shaping a response.")
+                self.state_changed.emit("ready", "Lumi is present.")
             except Exception as exc:
                 message = f"Text conversation failed: {exc}"
                 self.log.emit(message)
                 self.text_failed.emit(message)
+                self.state_changed.emit("failed", message)
 
         self._text_thread = threading.Thread(target=worker, daemon=True)
         self._text_thread.start()
@@ -180,7 +184,7 @@ class AssistantService(QThread):
     def stop_conversation(self) -> None:
         with QMutexLocker(self._mutex):
             if self.assistant:
-                self.state_changed.emit("stopping", "Stopping voice conversation...")
+                self.state_changed.emit("present", "Stopping voice conversation...")
                 self.assistant.stop()
                 if self.is_ready:
                     self.state_changed.emit("ready", "Models are ready.")

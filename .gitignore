@@ -13,6 +13,7 @@ env/
 # IDE / local machine state
 .idea/
 .vscode/
+.codex/
 
 # Build and cache output
 build/

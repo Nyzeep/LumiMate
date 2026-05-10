@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
 
 class EmotionBridge(QObject):
-    moodChanged = pyqtSignal()
-    breathLevelChanged = pyqtSignal()
-    presenceLevelChanged = pyqtSignal()
-    listeningChanged = pyqtSignal()
+    moodChanged = Signal()
+    breathLevelChanged = Signal()
+    presenceLevelChanged = Signal()
+    listeningChanged = Signal()
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -17,49 +17,58 @@ class EmotionBridge(QObject):
         self._is_listening = False
         controller.state_changed.connect(self._on_state_changed)
 
-    @pyqtProperty(str, notify=moodChanged)
+    @Property(str, notify=moodChanged)
     def mood(self) -> str:
         return self._mood
 
-    @pyqtProperty(float, notify=breathLevelChanged)
+    @Property(float, notify=breathLevelChanged)
     def breathLevel(self) -> float:
         return self._breath_level
 
-    @pyqtProperty(float, notify=presenceLevelChanged)
+    @Property(float, notify=presenceLevelChanged)
     def presenceLevel(self) -> float:
         return self._presence_level
 
-    @pyqtProperty(bool, notify=listeningChanged)
+    @Property(bool, notify=listeningChanged)
     def isListening(self) -> bool:
         return self._is_listening
 
-    @pyqtSlot(str)
+    @Slot(str)
     def setMood(self, mood: str) -> None:
         self._set_mood(mood or "quiet")
 
     def _on_state_changed(self, state: str, message: str) -> None:
-        self._is_listening = state == "running"
+        del message
+        self._is_listening = state == "listening"
         self.listeningChanged.emit()
-        if state in {"loading_asr", "loading_llm", "loading_tts", "switching"}:
+        if state in {"loading_asr", "loading_llm", "loading_tts", "switching", "validating"}:
             self._set_mood("awakening")
-            self._set_presence(0.70)
-            self._set_breath(0.68)
-        elif state == "running":
+            self._set_presence(0.78)
+            self._set_breath(0.70)
+        elif state == "listening":
             self._set_mood("listening")
-            self._set_presence(0.86)
-            self._set_breath(0.78)
+            self._set_presence(0.88)
+            self._set_breath(0.80)
+        elif state == "thinking":
+            self._set_mood("thinking")
+            self._set_presence(0.74)
+            self._set_breath(0.64)
+        elif state == "replying":
+            self._set_mood("replying")
+            self._set_presence(0.82)
+            self._set_breath(0.72)
         elif state == "ready":
             self._set_mood("present")
-            self._set_presence(0.64)
-            self._set_breath(0.58)
+            self._set_presence(0.62)
+            self._set_breath(0.56)
         elif state == "failed":
             self._set_mood("dim")
-            self._set_presence(0.30)
-            self._set_breath(0.42)
+            self._set_presence(0.28)
+            self._set_breath(0.40)
         else:
             self._set_mood("quiet")
             self._set_presence(0.42)
-            self._set_breath(0.54)
+            self._set_breath(0.52)
 
     def _set_mood(self, mood: str) -> None:
         if mood != self._mood:

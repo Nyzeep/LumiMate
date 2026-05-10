@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 from config import AssistantConfig, UPDATE_MANIFEST_URL
 from core import IntegrityVerifier
@@ -11,13 +11,13 @@ from services.update_service import UpdateService
 
 
 class MainController(QObject):
-    log = pyqtSignal(str)
-    progress = pyqtSignal(int, int, str)
-    loaded = pyqtSignal(bool)
-    state_changed = pyqtSignal(str, str)
-    user_text = pyqtSignal(str)
-    assistant_text = pyqtSignal(str)
-    text_failed = pyqtSignal(str)
+    log = Signal(str)
+    progress = Signal(int, int, str)
+    loaded = Signal(bool)
+    state_changed = Signal(str, str)
+    user_text = Signal(str)
+    assistant_text = Signal(str)
+    text_failed = Signal(str)
 
     def __init__(self) -> None:
         super().__init__()

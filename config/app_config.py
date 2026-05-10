@@ -9,12 +9,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESOURCES_ROOT = PROJECT_ROOT / "resources"
 PROMPT_WAV_CONFIG = RESOURCES_ROOT / "prompt_wav.json"
 USER_SETTINGS_PATH = PROJECT_ROOT / "config" / "user_settings.json"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 APP_AUTHOR = "LumiMate Team"
-APP_PHILOSOPHY = "Minimal, efficient, modular desktop AI companion."
+APP_PHILOSOPHY = "A spatial AI companion system with emotion, ritual, and breath."
 UPDATE_MANIFEST_URL = ""
 DEFAULT_REF_WAV = "zh_vo_Main_Linaxita_2_1_10_26.wav"
-DEFAULT_REF_TEXT = "在此之前，请您务必继续享受旅居拉古那的时光。"
+DEFAULT_REF_TEXT = "在每一个安静的夜里，Lumi 都会在这里等你。"
 
 
 def _reference_prompt() -> tuple[Path, str]:
@@ -39,7 +39,7 @@ class ProjectPaths:
     asr_model: Path = PROJECT_ROOT / "models" / "asr_model" / "ASR_model"
     llm_model: Path = PROJECT_ROOT / "models" / "llm_model" / "Qwen2.5"
     tts_model: Path = PROJECT_ROOT / "models" / "tts_model" / "菲比"
-    reference_audio: Path = PROJECT_ROOT / "resources" / "zh_vo_Main_Linaxita_2_1_10_26.wav"
+    reference_audio: Path = PROJECT_ROOT / "resources" / DEFAULT_REF_WAV
 
 
 @dataclass(slots=True)
@@ -47,6 +47,7 @@ class UserSettings:
     language: str = "zh-CN"
     check_update_on_startup: bool = False
     startup_page: str = "home"
+    reduce_motion: bool = False
 
     @classmethod
     def load(cls) -> "UserSettings":
@@ -56,6 +57,7 @@ class UserSettings:
                 language=str(payload.get("language") or "zh-CN"),
                 check_update_on_startup=bool(payload.get("check_update_on_startup", False)),
                 startup_page=str(payload.get("startup_page") or "home"),
+                reduce_motion=bool(payload.get("reduce_motion", False)),
             )
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return cls()
@@ -69,6 +71,7 @@ class UserSettings:
                         "language": self.language,
                         "check_update_on_startup": self.check_update_on_startup,
                         "startup_page": self.startup_page,
+                        "reduce_motion": self.reduce_motion,
                     },
                     ensure_ascii=False,
                     indent=2,

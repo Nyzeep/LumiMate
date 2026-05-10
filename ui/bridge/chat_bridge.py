@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
+from PySide6.QtCore import QObject, Property, Signal, Slot
 
 
 class ChatBridge(QObject):
-    readyChanged = pyqtSignal()
-    runningChanged = pyqtSignal()
-    statusChanged = pyqtSignal()
-    messageAdded = pyqtSignal(str, str)
-    clearRequested = pyqtSignal()
+    readyChanged = Signal()
+    runningChanged = Signal()
+    statusChanged = Signal()
+    messageAdded = Signal(str, str)
+    clearRequested = Signal()
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -23,19 +23,19 @@ class ChatBridge(QObject):
         controller.assistant_text.connect(lambda text: self.messageAdded.emit("assistant", text))
         controller.text_failed.connect(self._on_text_failed)
 
-    @pyqtProperty(bool, notify=readyChanged)
+    @Property(bool, notify=readyChanged)
     def ready(self) -> bool:
         return self._ready
 
-    @pyqtProperty(bool, notify=runningChanged)
+    @Property(bool, notify=runningChanged)
     def running(self) -> bool:
         return self._running
 
-    @pyqtProperty(str, notify=statusChanged)
+    @Property(str, notify=statusChanged)
     def status(self) -> str:
         return self._status
 
-    @pyqtSlot(str)
+    @Slot(str)
     def sendText(self, text: str) -> None:
         text = text.strip()
         if not text:
@@ -43,21 +43,21 @@ class ChatBridge(QObject):
         if self._controller.send_text(text):
             self._set_status("Lumi is shaping a response.")
 
-    @pyqtSlot()
+    @Slot()
     def startVoice(self) -> None:
         if self._controller.start_conversation():
             self._running = True
             self.runningChanged.emit()
             self._set_status("Listening.")
 
-    @pyqtSlot()
+    @Slot()
     def stopVoice(self) -> None:
         self._controller.stop_conversation()
         self._running = False
         self.runningChanged.emit()
         self._set_status("Quiet again.")
 
-    @pyqtSlot()
+    @Slot()
     def clear(self) -> None:
         self.clearRequested.emit()
 
@@ -67,8 +67,8 @@ class ChatBridge(QObject):
         self._set_status("Ready." if success else "Load models to wake Lumi.")
 
     def _on_state_changed(self, state: str, message: str) -> None:
-        ready = state in {"ready", "running"}
-        running = state == "running"
+        ready = state in {"ready", "listening", "thinking", "replying"}
+        running = state == "listening"
         if ready != self._ready:
             self._ready = ready
             self.readyChanged.emit()
