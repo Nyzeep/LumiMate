@@ -18,6 +18,7 @@ class MainController(QObject):
     user_text = Signal(str)
     assistant_text = Signal(str)
     text_failed = Signal(str)
+    voice_level = Signal(float)
 
     def __init__(self) -> None:
         super().__init__()
@@ -110,6 +111,7 @@ class MainController(QObject):
         service.user_text.connect(self.user_text.emit)
         service.assistant_text.connect(self.assistant_text.emit)
         service.text_failed.connect(self.text_failed.emit)
+        service.voice_level.connect(self.voice_level.emit)
 
     def _on_loaded(self, success: bool) -> None:
         self._loading = False

@@ -1,10 +1,12 @@
 {
   "assets": {
+    "background1": "背景图片/背景1.png",
+    "background2": "背景图片/背景2.png",
+    "background3": "背景图片/背景3.png",
+    "background4": "背景图片/背景4.png",
     "homeStage": "resources/ui/lumi_home_stage.png",
     "companionPortrait": "resources/ui/lumi_companion_portrait.png",
     "atmosphereTexture": "resources/ui/lumi_atmosphere_texture.png",
-    "referenceAudio": "resources/zh_vo_Main_Linaxita_2_1_10_26.wav",
-    "breathingNebulaShader": "ui/qml/shaders/breathing_nebula.frag.qsb",
-    "softRippleShader": "ui/qml/shaders/soft_ripple.frag.qsb"
+    "referenceAudio": "resources/zh_vo_Main_Linaxita_2_1_10_26.wav"
   }
 }

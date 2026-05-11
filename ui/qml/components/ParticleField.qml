@@ -4,6 +4,7 @@ import "../design_system"
 Item {
     id: root
     Colors { id: colors }
+    Motion { id: motion }
     property int particleCount: 42
     property color particleColor: colors.softAmber
     property real intensity: 0.45
@@ -23,8 +24,8 @@ Item {
             SequentialAnimation on y {
                 loops: Animation.Infinite
                 running: root.visible
-                NumberAnimation { to: baseY - 18 - (index % 7) * 2; duration: 12000 + (index % 9) * 1800; easing.type: Easing.InOutSine }
-                NumberAnimation { to: baseY; duration: 12000 + (index % 9) * 1800; easing.type: Easing.InOutSine }
+                NumberAnimation { to: baseY - 18 - (index % 7) * 2; duration: (12000 + (index % 9) * 1800) * motion.factor; easing.type: Easing.InOutSine }
+                NumberAnimation { to: baseY; duration: (12000 + (index % 9) * 1800) * motion.factor; easing.type: Easing.InOutSine }
             }
         }
     }

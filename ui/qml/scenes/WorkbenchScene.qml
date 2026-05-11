@@ -16,77 +16,88 @@ Item {
         return parts.length ? parts[parts.length - 1] : normalized
     }
 
-    Text {
-        x: 28
-        y: 76
-        text: appBridge.t("workbench.title", appBridge.language)
-        color: colors.neuralWhite
-        font.family: typography.display(appBridge.language)
-        font.pixelSize: typography.title
+    function progressRatio() {
+        if (modelBridge.progressTotal > 0) {
+            return modelBridge.progressStep / modelBridge.progressTotal
+        }
+        return modelBridge.loaded ? 1 : 0
     }
 
-    Text {
-        x: 28
-        y: 116
-        width: root.width * 0.46
-        text: appBridge.t("workbench.subtitle", appBridge.language)
-        wrapMode: Text.WordWrap
-        color: colors.dimText
-        font.family: typography.sans(appBridge.language)
-        font.pixelSize: typography.body
+    function stateLabel() {
+        return appBridge.t("state." + modelBridge.state, appBridge.language)
+    }
+
+    SceneTitleBlock {
+        id: titleBlock
+        x: 0
+        y: 0
+        widthHint: 720
+        numberLabel: appBridge.t("scene.workbench.title", appBridge.language)
+        titleEn: "Workbench"
+        subtitle: appBridge.t("scene.workbench.subtitle", appBridge.language)
     }
 
     Item {
-        x: 26
-        y: 184
-        width: root.width * 0.34
-        height: root.height - 220
+        x: 0
+        y: 122
+        width: root.width * 0.26
+        height: root.height * 0.68
 
         NeuralLoader {
             anchors.top: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width * 0.84
-            height: parent.width * 0.84
+            width: parent.width * 0.90
+            height: width
         }
 
         GlassPanel {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            height: 176
+            height: 248
+            tone: "strong"
 
             Column {
-                x: 20
-                y: 18
-                spacing: 10
-                Text {
-                    text: appBridge.t("workbench.runtime.title", appBridge.language)
-                    color: colors.dimText
-                    font.family: typography.sans(appBridge.language)
-                    font.pixelSize: typography.small
+                anchors.fill: parent
+                spacing: 14
+
+                MetricLine {
+                    width: parent.width
+                    label: appBridge.t("workbench.metric.runtime", appBridge.language)
+                    value: root.stateLabel()
+                    detail: modelBridge.stateMessage
+                    progress: root.progressRatio()
                 }
-                Text {
-                    text: appBridge.t("workbench.phase." + modelBridge.state, appBridge.language)
-                    color: colors.neuralWhite
-                    font.family: typography.display(appBridge.language)
-                    font.pixelSize: typography.title
+
+                MetricLine {
+                    width: parent.width
+                    label: appBridge.t("workbench.metric.selection", appBridge.language)
+                    value: root.basename(modelBridge.selectedLlm)
+                    detail: root.basename(modelBridge.selectedAsr) + " / " + root.basename(modelBridge.selectedTts)
                 }
-                Text {
-                    width: parent.width - 12
-                    text: modelBridge.stateMessage
-                    wrapMode: Text.WordWrap
-                    color: colors.quietText
-                    font.family: typography.sans(appBridge.language)
-                    font.pixelSize: typography.body
-                }
-                Rectangle {
-                    width: parent.width - 24
-                    height: 2
-                    color: Qt.rgba(0.60, 0.69, 0.82, 0.14)
-                    Rectangle {
-                        width: parent.width * (modelBridge.progressTotal > 0 ? modelBridge.progressStep / modelBridge.progressTotal : (modelBridge.loaded ? 1 : 0))
-                        height: parent.height
-                        color: colors.nebulaGold
+
+                Column {
+                    width: parent.width
+                    spacing: 6
+
+                    Text {
+                        text: appBridge.t("workbench.metric.log", appBridge.language)
+                        color: colors.dimText
+                        font.family: typography.sans(appBridge.language)
+                        font.pixelSize: typography.small
+                    }
+
+                    Repeater {
+                        model: modelBridge.runtimeLog
+
+                        Text {
+                            width: parent ? parent.width : 0
+                            text: modelData
+                            color: colors.quietText
+                            elide: Text.ElideRight
+                            font.family: typography.sans(appBridge.language)
+                            font.pixelSize: typography.small
+                        }
                     }
                 }
             }
@@ -94,131 +105,256 @@ Item {
     }
 
     Row {
-        x: root.width * 0.40
-        y: 176
-        spacing: 18
+        x: root.width * 0.30
+        y: 122
+        spacing: 16
 
-        Column {
-            width: root.width * 0.17
-            spacing: 12
-            Text {
-                text: appBridge.t("workbench.asr", appBridge.language)
-                color: colors.dimText
-                font.family: typography.sans(appBridge.language)
-                font.pixelSize: typography.small
-            }
-            Repeater {
-                model: modelBridge.asrModels
-                OrbitNode {
+        GlassPanel {
+            width: root.width * 0.20
+            height: root.height * 0.42
+
+            Column {
+                anchors.fill: parent
+                spacing: 12
+
+                Text {
+                    text: appBridge.t("workbench.models.asr", appBridge.language)
+                    color: colors.neuralWhite
+                    font.family: typography.display(appBridge.language)
+                    font.pixelSize: typography.section
+                }
+
+                Text {
+                    visible: modelBridge.asrModels.length === 0
                     width: parent.width
-                    title: root.basename(modelData)
-                    subtitle: modelData
-                    selected: modelData === modelBridge.selectedAsr
-                    onActivated: modelBridge.selectModel("asr", modelData)
+                    text: appBridge.t("workbench.models.empty", appBridge.language)
+                    wrapMode: Text.WordWrap
+                    color: colors.dimText
+                    font.family: typography.sans(appBridge.language)
+                    font.pixelSize: typography.small
+                }
+
+                Flickable {
+                    visible: modelBridge.asrModels.length > 0
+                    width: parent.width
+                    height: parent.height - 44
+                    clip: true
+                    contentWidth: width
+                    contentHeight: asrColumn.height
+
+                    Column {
+                        id: asrColumn
+                        width: parent.width
+                        spacing: 10
+
+                        Repeater {
+                            model: modelBridge.asrModels
+
+                            OrbitNode {
+                                width: asrColumn.width
+                                title: root.basename(modelData)
+                                subtitle: modelData
+                                selected: modelData === modelBridge.selectedAsr
+                                symbol: "\u25CE"
+                                onActivated: modelBridge.selectModel("asr", modelData)
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        Column {
-            width: root.width * 0.17
-            spacing: 12
-            Text {
-                text: appBridge.t("workbench.llm", appBridge.language)
-                color: colors.dimText
-                font.family: typography.sans(appBridge.language)
-                font.pixelSize: typography.small
-            }
-            Repeater {
-                model: modelBridge.llmModels
-                OrbitNode {
+        GlassPanel {
+            width: root.width * 0.20
+            height: root.height * 0.42
+
+            Column {
+                anchors.fill: parent
+                spacing: 12
+
+                Text {
+                    text: appBridge.t("workbench.models.llm", appBridge.language)
+                    color: colors.neuralWhite
+                    font.family: typography.display(appBridge.language)
+                    font.pixelSize: typography.section
+                }
+
+                Text {
+                    visible: modelBridge.llmModels.length === 0
                     width: parent.width
-                    title: root.basename(modelData)
-                    subtitle: modelData
-                    selected: modelData === modelBridge.selectedLlm
-                    onActivated: modelBridge.selectModel("llm", modelData)
+                    text: appBridge.t("workbench.models.empty", appBridge.language)
+                    wrapMode: Text.WordWrap
+                    color: colors.dimText
+                    font.family: typography.sans(appBridge.language)
+                    font.pixelSize: typography.small
+                }
+
+                Flickable {
+                    visible: modelBridge.llmModels.length > 0
+                    width: parent.width
+                    height: parent.height - 44
+                    clip: true
+                    contentWidth: width
+                    contentHeight: llmColumn.height
+
+                    Column {
+                        id: llmColumn
+                        width: parent.width
+                        spacing: 10
+
+                        Repeater {
+                            model: modelBridge.llmModels
+
+                            OrbitNode {
+                                width: llmColumn.width
+                                title: root.basename(modelData)
+                                subtitle: modelData
+                                selected: modelData === modelBridge.selectedLlm
+                                symbol: "\u25C8"
+                                onActivated: modelBridge.selectModel("llm", modelData)
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        Column {
-            width: root.width * 0.17
-            spacing: 12
-            Text {
-                text: appBridge.t("workbench.tts", appBridge.language)
-                color: colors.dimText
-                font.family: typography.sans(appBridge.language)
-                font.pixelSize: typography.small
-            }
-            Repeater {
-                model: modelBridge.ttsModels
-                OrbitNode {
+        GlassPanel {
+            width: root.width * 0.20
+            height: root.height * 0.42
+
+            Column {
+                anchors.fill: parent
+                spacing: 12
+
+                Text {
+                    text: appBridge.t("workbench.models.tts", appBridge.language)
+                    color: colors.neuralWhite
+                    font.family: typography.display(appBridge.language)
+                    font.pixelSize: typography.section
+                }
+
+                Text {
+                    visible: modelBridge.ttsModels.length === 0
                     width: parent.width
-                    title: root.basename(modelData)
-                    subtitle: modelData
-                    selected: modelData === modelBridge.selectedTts
-                    onActivated: modelBridge.selectModel("tts", modelData)
+                    text: appBridge.t("workbench.models.empty", appBridge.language)
+                    wrapMode: Text.WordWrap
+                    color: colors.dimText
+                    font.family: typography.sans(appBridge.language)
+                    font.pixelSize: typography.small
+                }
+
+                Flickable {
+                    visible: modelBridge.ttsModels.length > 0
+                    width: parent.width
+                    height: parent.height - 44
+                    clip: true
+                    contentWidth: width
+                    contentHeight: ttsColumn.height
+
+                    Column {
+                        id: ttsColumn
+                        width: parent.width
+                        spacing: 10
+
+                        Repeater {
+                            model: modelBridge.ttsModels
+
+                            OrbitNode {
+                                width: ttsColumn.width
+                                title: root.basename(modelData)
+                                subtitle: modelData
+                                selected: modelData === modelBridge.selectedTts
+                                symbol: "\u2726"
+                                onActivated: modelBridge.selectModel("tts", modelData)
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    Column {
-        x: root.width * 0.40
-        y: root.height - 164
-        spacing: 12
+    GlassPanel {
+        x: root.width * 0.30
+        y: root.height - 224
+        width: root.width * 0.66
+        height: 192
+        tone: "soft"
 
         Row {
             spacing: 12
+
             SpatialInput {
-                width: root.width * 0.24
-                placeholderText: appBridge.t("workbench.reference", appBridge.language)
+                width: root.width * 0.26
+                placeholderText: appBridge.t("workbench.selection.audio", appBridge.language)
                 text: modelBridge.selectedRefAudio
+                leadingSymbol: "\u25CE"
                 onEditingFinished: modelBridge.setReferenceAudio(text)
             }
+
             SpatialInput {
                 width: root.width * 0.14
-                placeholderText: appBridge.t("workbench.role", appBridge.language)
+                placeholderText: appBridge.t("workbench.selection.role", appBridge.language)
                 text: modelBridge.selectedTtsCharacter
+                leadingSymbol: "\u25C7"
                 onEditingFinished: modelBridge.setTtsCharacter(text)
             }
         }
 
         SpatialInput {
-            width: root.width * 0.40
-            placeholderText: appBridge.t("workbench.reference_text", appBridge.language)
+            y: 74
+            width: parent.width
+            placeholderText: appBridge.t("workbench.selection.text", appBridge.language)
             text: modelBridge.selectedRefText
+            leadingSymbol: "\u25A1"
             onEditingFinished: modelBridge.setReferenceText(text)
         }
 
         Row {
+            y: 130
             spacing: 12
+
             OrbitButton {
-                width: 180
-                label: appBridge.t("workbench.scan", appBridge.language)
-                subtitle: modelBridge.modelRoot
+                width: 148
+                label: appBridge.t("workbench.action.scan", appBridge.language)
+                subtitle: appBridge.t("workbench.action.scan.sub", appBridge.language)
                 tier: "tertiary"
+                symbol: "\u25CE"
                 onActivated: modelBridge.scanModels()
             }
+
             OrbitButton {
-                width: 180
-                label: appBridge.t("workbench.load", appBridge.language)
-                subtitle: appBridge.t("workbench.selection.title", appBridge.language)
+                width: 148
+                label: appBridge.t("workbench.action.load", appBridge.language)
+                subtitle: appBridge.t("workbench.action.load.sub", appBridge.language)
                 tier: "primary"
                 active: modelBridge.loaded
-                onActivated: modelBridge.loadSelectedModels()
+                symbol: "\u25B3"
+                onActivated: {
+                    modelBridge.loadSelectedModels()
+                    appBridge.navigate("loading")
+                }
             }
+
             OrbitButton {
-                width: 180
-                label: appBridge.t("workbench.switch", appBridge.language)
-                subtitle: appBridge.t("workbench.runtime.title", appBridge.language)
+                width: 148
+                label: appBridge.t("workbench.action.switch", appBridge.language)
+                subtitle: appBridge.t("workbench.action.switch.sub", appBridge.language)
                 tier: "secondary"
-                onActivated: modelBridge.switchSelectedModels()
+                symbol: "\u25C8"
+                onActivated: {
+                    modelBridge.switchSelectedModels()
+                    appBridge.navigate("loading")
+                }
             }
+
             OrbitButton {
-                width: 180
-                label: appBridge.t("workbench.release", appBridge.language)
-                subtitle: appBridge.t("workbench.phase.releasing_cache", appBridge.language)
+                width: 148
+                label: appBridge.t("workbench.action.release", appBridge.language)
+                subtitle: appBridge.t("workbench.action.release.sub", appBridge.language)
                 tier: "tertiary"
+                symbol: "\u25CB"
                 onActivated: modelBridge.releaseCache()
             }
         }

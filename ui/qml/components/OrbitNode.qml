@@ -9,63 +9,43 @@ Item {
     property string subtitle: ""
     property bool selected: false
     property bool activeGlow: false
+    property string symbol: "◈"
     signal activated()
 
     width: 220
-    height: 96
+    height: 102
 
-    Rectangle {
+    GlassPanel {
         anchors.fill: parent
-        radius: 24
-        color: root.selected ? Qt.rgba(0.10, 0.17, 0.28, 0.88) : Qt.rgba(0.07, 0.11, 0.19, 0.60)
-        border.width: 1
-        border.color: root.selected ? Qt.rgba(0.95, 0.78, 0.62, 0.46) : Qt.rgba(0.60, 0.69, 0.82, 0.16)
+        tone: root.selected ? "strong" : "soft"
+        glowOpacity: root.selected ? 0.14 : 0.05
+        edgeColor: root.selected ? Qt.rgba(0.95, 0.78, 0.62, 0.36) : Qt.rgba(0.60, 0.69, 0.82, 0.14)
+        fillColor: root.selected ? Qt.rgba(0.09, 0.16, 0.28, 0.82) : Qt.rgba(0.06, 0.10, 0.18, 0.58)
     }
 
-    Item {
-        x: 14
-        y: 14
-        width: 68
-        height: 68
-
-        Repeater {
-            model: 3
-            Rectangle {
-                anchors.centerIn: parent
-                width: 24 + index * 16
-                height: width
-                radius: width / 2
-                color: "transparent"
-                border.width: 1
-                border.color: index === 0 ? colors.softAmber : colors.line
-                opacity: root.selected ? 0.52 - index * 0.08 : 0.26 - index * 0.05
-            }
-        }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 14
-            height: 14
-            radius: 7
-            color: root.selected || root.activeGlow ? colors.nebulaGold : colors.line
-            opacity: 0.88
-        }
+    HaloIconButton {
+        x: 16
+        y: 18
+        diameter: 48
+        symbol: root.symbol
+        active: root.selected || root.activeGlow
+        clickable: false
     }
 
     Text {
-        x: 94
-        y: 22
+        x: 82
+        y: 18
         width: parent.width - x - 12
         text: root.title
         color: colors.neuralWhite
-        font.family: typography.sans(appBridge ? appBridge.language : "zh-CN")
+        font.family: typography.display(appBridge ? appBridge.language : "zh-CN")
         font.pixelSize: typography.section
         elide: Text.ElideMiddle
     }
 
     Text {
-        x: 94
-        y: 50
+        x: 82
+        y: 46
         width: parent.width - x - 12
         text: root.subtitle
         color: colors.dimText

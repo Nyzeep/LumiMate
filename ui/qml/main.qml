@@ -4,10 +4,10 @@ import "scenes"
 
 Window {
     id: window
-    width: 1280
-    height: 760
-    minimumWidth: 1040
-    minimumHeight: 680
+    width: 1600
+    height: 900
+    minimumWidth: 1280
+    minimumHeight: 720
     visible: true
     color: "transparent"
     title: "LumiMate"

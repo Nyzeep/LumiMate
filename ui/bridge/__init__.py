@@ -3,5 +3,6 @@ from .chat_bridge import ChatBridge
 from .companion_bridge import CompanionBridge
 from .emotion_bridge import EmotionBridge
 from .model_bridge import ModelBridge
+from .window_bridge import WindowBridge
 
-__all__ = ["AppBridge", "ChatBridge", "CompanionBridge", "EmotionBridge", "ModelBridge"]
+__all__ = ["AppBridge", "ChatBridge", "CompanionBridge", "EmotionBridge", "ModelBridge", "WindowBridge"]

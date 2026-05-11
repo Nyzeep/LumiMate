@@ -9,12 +9,13 @@ from services.model_manager import ModelManager
 
 
 class VoiceAssistant:
-    def __init__(self, config, on_user_text=None, on_assistant_text=None, on_log=None, on_state=None):
+    def __init__(self, config, on_user_text=None, on_assistant_text=None, on_log=None, on_state=None, on_voice_level=None):
         self.config = config
         self.on_user_text = on_user_text
         self.on_assistant_text = on_assistant_text
         self.on_log = on_log
         self.on_state = on_state
+        self.on_voice_level = on_voice_level
         self.running = False
         self.thread: threading.Thread | None = None
         self.models = ModelManager(self.log)
@@ -36,6 +37,10 @@ class VoiceAssistant:
     def state(self, state: str, message: str) -> None:
         if self.on_state:
             self.on_state(state, message)
+
+    def emit_voice_level(self, level: float) -> None:
+        if self.on_voice_level:
+            self.on_voice_level(max(0.0, min(1.0, float(level))))
 
     def load_models(self, progress_callback=None) -> bool:
         loaded = self.models.load(self.config, progress_callback)
@@ -97,12 +102,18 @@ class VoiceAssistant:
                 self.on_user_text(user_text)
 
         with self._response_lock:
+            self.state("thinking", "Lumi is composing a response.")
             assistant_text = self.llm_generate(user_text)
+            self.state("replying", "Lumi is shaping a response.")
             self.log(f"Lumi: {assistant_text}")
             if self.on_assistant_text:
                 self.on_assistant_text(assistant_text)
             if speak:
                 self.safe_tts(assistant_text)
+            if self.running:
+                self.state("listening", "Lumi is listening.")
+            else:
+                self.state("ready", "Lumi is present.")
             return assistant_text
 
     def safe_tts(self, text: str) -> None:
@@ -112,6 +123,7 @@ class VoiceAssistant:
         if len(text) < 2:
             text = "\u597d\u7684\u3002"
         try:
+            self.emit_voice_level(0.74)
             self.genie.tts(
                 character_name=self.config["tts_character"],
                 text=text,
@@ -122,6 +134,8 @@ class VoiceAssistant:
             self.genie.wait_for_playback_done()
         except Exception as exc:
             self.log(f"TTS playback failed: {exc}")
+        finally:
+            self.emit_voice_level(0.0)
 
     def has_energy(self, audio) -> bool:
         threshold = self.config.get("energy_threshold", 0.005)
@@ -147,10 +161,16 @@ class VoiceAssistant:
                 audio_data = audio_data.flatten()
             except Exception as exc:
                 self.log(f"Recording failed: {exc}")
+                self.emit_voice_level(0.0)
                 continue
 
-            if not self.has_energy(audio_data):
+            rms = float(np.sqrt(np.mean(audio_data**2))) if len(audio_data) else 0.0
+            threshold = max(float(self.config.get("energy_threshold", 0.005)), 1e-6)
+            self.emit_voice_level(min(1.0, rms / (threshold * 8.0)))
+
+            if rms <= threshold:
                 self.log("No clear voice detected.")
+                self.emit_voice_level(0.0)
                 continue
 
             try:
@@ -158,10 +178,12 @@ class VoiceAssistant:
                 user_text = result_list[0].text.strip()
             except Exception as exc:
                 self.log(f"Speech recognition failed: {exc}")
+                self.emit_voice_level(0.0)
                 continue
 
             if not user_text:
                 self.log("Recognition result was empty.")
+                self.emit_voice_level(0.0)
                 continue
 
             self.log(f"You: {user_text}")
@@ -172,8 +194,10 @@ class VoiceAssistant:
                 self.respond_to_text(user_text, speak=True, emit_user=False)
             except Exception as exc:
                 self.log(f"Lumi response failed: {exc}")
+                self.state("failed", f"Lumi response failed: {exc}")
 
         self.log("Conversation stopped.")
+        self.emit_voice_level(0.0)
 
     def start(self) -> bool:
         with self._lock:
@@ -183,6 +207,7 @@ class VoiceAssistant:
                 self.log("Load models first.")
                 return False
             self.running = True
+            self.emit_voice_level(0.0)
             self.thread = threading.Thread(target=self._run_loop, daemon=True)
             self.thread.start()
             return True
@@ -193,3 +218,4 @@ class VoiceAssistant:
             thread = self.thread
         if thread and thread.is_alive():
             thread.join(timeout=2.0)
+        self.emit_voice_level(0.0)

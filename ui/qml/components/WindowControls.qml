@@ -6,51 +6,45 @@ Row {
     id: root
     Colors { id: colors }
     property var windowRef
-    spacing: 12
+    spacing: 10
 
     Repeater {
-        model: [
-            { label: "-", action: "min" },
-            { label: "[]", action: "max" },
-            { label: "x", action: "close" }
-        ]
+        model: appBridge.sceneGroups
 
-        Rectangle {
-            width: 28
-            height: 28
-            radius: 14
-            color: Qt.rgba(0.08, 0.12, 0.20, 0.54)
-            border.width: 1
-            border.color: Qt.rgba(0.60, 0.69, 0.82, 0.20)
+        HaloIconButton {
+            diameter: 30
+            symbol: String(index + 1)
+            active: index === appBridge.currentSceneGroupIndex
+            onActivated: appBridge.setSceneGroup(index)
+        }
+    }
 
-            Text {
-                anchors.centerIn: parent
-                text: modelData.label
-                color: colors.quietText
-                font.pixelSize: 13
+    Item { width: 8; height: 1 }
+
+    HaloIconButton {
+        diameter: 28
+        symbol: "—"
+        onActivated: if (root.windowRef) root.windowRef.showMinimized()
+    }
+
+    HaloIconButton {
+        diameter: 28
+        symbol: root.windowRef && root.windowRef.visibility === Window.Maximized ? "❐" : "□"
+        onActivated: {
+            if (!root.windowRef) {
+                return
             }
-
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (!root.windowRef) {
-                        return
-                    }
-                    if (modelData.action === "min") {
-                        root.windowRef.showMinimized()
-                    } else if (modelData.action === "max") {
-                        if (root.windowRef.visibility === Window.Maximized) {
-                            root.windowRef.showNormal()
-                        } else {
-                            root.windowRef.showMaximized()
-                        }
-                    } else if (modelData.action === "close") {
-                        root.windowRef.close()
-                    }
-                }
+            if (root.windowRef.visibility === Window.Maximized) {
+                root.windowRef.showNormal()
+            } else {
+                root.windowRef.showMaximized()
             }
         }
+    }
+
+    HaloIconButton {
+        diameter: 28
+        symbol: "×"
+        onActivated: if (root.windowRef) root.windowRef.close()
     }
 }

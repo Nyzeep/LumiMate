@@ -7,143 +7,266 @@ Item {
     Colors { id: colors }
     Typography { id: typography }
 
-    ListModel { id: transcript }
+    function percentText(value) {
+        return Math.round(Math.max(0, Math.min(1, value)) * 100) + "%"
+    }
+
+    function phaseLabel() {
+        return appBridge.t("state." + chatBridge.phase, appBridge.language)
+    }
+
+    function scrollToEnd() {
+        scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height)
+    }
+
+    function sendCurrentText() {
+        var value = String(composer.text).trim()
+        if (!value.length) {
+            return
+        }
+        chatBridge.sendText(value)
+        composer.text = ""
+        composer.forceActiveFocus()
+    }
 
     Connections {
         target: chatBridge
-        function onMessageAdded(role, text) {
-            transcript.append({ "role": role, "body": text })
-            Qt.callLater(function() {
-                scroll.contentY = Math.max(0, scroll.contentHeight - scroll.height)
-            })
-        }
-        function onClearRequested() {
-            transcript.clear()
+
+        function onMessagesChanged() {
+            Qt.callLater(root.scrollToEnd)
         }
     }
 
-    Text {
-        x: 28
-        y: 76
-        text: appBridge.t("chat.title", appBridge.language)
-        color: colors.neuralWhite
-        font.family: typography.display(appBridge.language)
-        font.pixelSize: typography.title
+    Component.onCompleted: Qt.callLater(root.scrollToEnd)
+
+    SceneTitleBlock {
+        id: titleBlock
+        x: 0
+        y: 0
+        widthHint: 680
+        numberLabel: appBridge.t("scene.chat.title", appBridge.language)
+        titleEn: "Chat Space"
+        subtitle: appBridge.t("scene.chat.subtitle", appBridge.language)
     }
 
-    Text {
-        x: 28
-        y: 116
-        width: root.width * 0.42
-        text: appBridge.t("chat.subtitle", appBridge.language)
-        color: colors.dimText
-        wrapMode: Text.WordWrap
-        font.family: typography.sans(appBridge.language)
-        font.pixelSize: typography.body
-    }
-
-    Item {
-        x: root.width * 0.34
-        y: 110
-        width: root.width * 0.34
-        height: root.height * 0.54
-
-        EmotionPulse {
-            anchors.centerIn: parent
-            width: parent.width * 0.9
-            height: width
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 64
-            text: appBridge.t("chat.center.label", appBridge.language)
-            color: colors.dimText
-            font.family: typography.sans(appBridge.language)
-            font.pixelSize: typography.small
-        }
-
-        VoiceWave {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            width: parent.width * 0.7
-            height: 60
-        }
-    }
-
-    Flickable {
-        id: scroll
-        x: root.width * 0.66
-        y: 86
-        width: root.width * 0.30
-        height: root.height * 0.60
-        clip: true
-        contentWidth: width
-        contentHeight: chatColumn.height
+    GlassPanel {
+        x: 0
+        y: 124
+        width: root.width * 0.23
+        height: root.height * 0.56
 
         Column {
-            id: chatColumn
-            width: scroll.width
-            spacing: 12
-            Repeater {
-                model: transcript
-                MessageOrbit {
-                    width: chatColumn.width
-                    role: model.role
-                    body: model.body
+            anchors.fill: parent
+            spacing: 16
+
+            Row {
+                spacing: 10
+
+                HaloIconButton {
+                    diameter: 34
+                    symbol: "\u2726"
+                    active: true
+                    clickable: false
+                }
+
+                Column {
+                    spacing: 4
+
+                    Text {
+                        text: "Lumi"
+                        color: colors.neuralWhite
+                        font.family: typography.display(appBridge.language)
+                        font.pixelSize: typography.section
+                    }
+
+                    Text {
+                        text: appBridge.t("chat.presence.label", appBridge.language)
+                        color: colors.dimText
+                        font.family: typography.sans(appBridge.language)
+                        font.pixelSize: typography.small
+                    }
+                }
+            }
+
+            MetricLine {
+                width: parent.width
+                label: appBridge.t("chat.phase", appBridge.language)
+                value: root.phaseLabel()
+                detail: chatBridge.status
+            }
+
+            MetricLine {
+                width: parent.width
+                label: appBridge.t("chat.voice.label", appBridge.language)
+                value: root.percentText(chatBridge.voiceLevel)
+                detail: appBridge.t("chat.voice.detail", appBridge.language)
+                progress: chatBridge.voiceLevel
+            }
+
+            MetricLine {
+                width: parent.width
+                label: appBridge.t("chat.transcript", appBridge.language)
+                value: String(chatBridge.messageCount)
+                detail: appBridge.t("chat.transcript.detail", appBridge.language)
+            }
+
+            Text {
+                width: parent.width
+                visible: !modelBridge.loaded
+                text: appBridge.t("chat.ready.hint", appBridge.language)
+                wrapMode: Text.WordWrap
+                color: colors.softAmber
+                lineHeight: 1.35
+                font.family: typography.sans(appBridge.language)
+                font.pixelSize: typography.body
+            }
+        }
+    }
+
+    GlassPanel {
+        id: conversationPanel
+        x: root.width * 0.27
+        y: 100
+        width: root.width * 0.69
+        height: root.height * 0.58
+        tone: "soft"
+        glowOpacity: 0.08
+
+        Flickable {
+            id: scroll
+            anchors.fill: parent
+            clip: true
+            contentWidth: width
+            contentHeight: transcriptColumn.height
+
+            Column {
+                id: transcriptColumn
+                width: scroll.width - 4
+                spacing: 18
+
+                Item {
+                    visible: chatBridge.messageCount === 0
+                    width: parent.width
+                    height: placeholderColumn.implicitHeight
+
+                    Column {
+                        id: placeholderColumn
+                        width: parent.width * 0.72
+                        spacing: 12
+
+                        MessageOrbit {
+                            width: parent.width
+                            role: "assistant"
+                            author: "Lumi"
+                            body: appBridge.t("chat.message.empty.body", appBridge.language)
+                        }
+
+                        Text {
+                            width: parent.width
+                            text: appBridge.t("chat.message.empty.note", appBridge.language)
+                            wrapMode: Text.WordWrap
+                            color: colors.dimText
+                            lineHeight: 1.35
+                            font.family: typography.sans(appBridge.language)
+                            font.pixelSize: typography.small
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: chatBridge.messages
+
+                    MessageOrbit {
+                        width: transcriptColumn.width
+                        role: modelData.role
+                        author: modelData.author
+                        body: modelData.body
+                    }
                 }
             }
         }
     }
 
     Row {
-        x: 28
-        y: root.height - 110
-        spacing: 12
+        x: 0
+        y: root.height - 118
+        spacing: 14
 
-        SpatialInput {
-            id: input
-            width: root.width * 0.58
-            height: 58
-            placeholderText: appBridge.t("chat.placeholder", appBridge.language)
-            onAccepted: {
-                chatBridge.sendText(text)
-                text = ""
-            }
+        OrbitButton {
+            width: 182
+            label: appBridge.t("chat.action.listen", appBridge.language)
+            subtitle: appBridge.t("chat.action.listen.sub", appBridge.language)
+            tier: "secondary"
+            active: chatBridge.running
+            symbol: "\u25CE"
+            onActivated: chatBridge.startVoice()
         }
 
         OrbitButton {
-            width: 150
-            height: 58
-            label: appBridge.t("chat.send", appBridge.language)
-            subtitle: chatBridge.status
-            tier: "primary"
-            onActivated: {
-                chatBridge.sendText(input.text)
-                input.text = ""
-            }
+            width: 182
+            label: appBridge.t("chat.action.stop", appBridge.language)
+            subtitle: appBridge.t("chat.action.stop.sub", appBridge.language)
+            tier: "tertiary"
+            symbol: "\u25CB"
+            onActivated: chatBridge.stopVoice()
+        }
+
+        OrbitButton {
+            width: 182
+            label: appBridge.t("chat.action.clear", appBridge.language)
+            subtitle: appBridge.t("chat.action.clear.sub", appBridge.language)
+            tier: "tertiary"
+            symbol: "\u25C7"
+            onActivated: chatBridge.clear()
         }
     }
 
-    Column {
-        x: root.width * 0.66
-        y: root.height - 180
-        spacing: 10
+    GlassPanel {
+        id: dock
+        x: root.width * 0.27
+        y: root.height - 120
+        width: root.width * 0.69
+        height: 88
+        tone: "strong"
+        radius: 34
+        padding: 0
+        glowOpacity: 0.12
 
-        OrbitButton {
-            width: root.width * 0.30
-            label: appBridge.t("chat.listen", appBridge.language)
-            subtitle: appBridge.t("chat.status.listening", appBridge.language)
-            tier: "secondary"
-            active: chatBridge.running
-            onActivated: chatBridge.startVoice()
+        SpatialInput {
+            id: composer
+            x: 16
+            y: 15
+            width: dock.width * 0.50
+            height: 58
+            leadingSymbol: "\u25CE"
+            placeholderText: appBridge.t("chat.placeholder", appBridge.language)
+            onAccepted: root.sendCurrentText()
         }
-        OrbitButton {
-            width: root.width * 0.30
-            label: appBridge.t("chat.stop", appBridge.language)
-            subtitle: appBridge.t("chat.status.ready", appBridge.language)
-            tier: "tertiary"
-            onActivated: chatBridge.stopVoice()
+
+        VoiceWave {
+            x: composer.x + composer.width + 18
+            anchors.verticalCenter: composer.verticalCenter
+            width: dock.width * 0.18
+            height: 34
+        }
+
+        Text {
+            x: dock.width * 0.76
+            anchors.verticalCenter: composer.verticalCenter
+            text: root.phaseLabel()
+            color: colors.dimText
+            font.family: typography.sans(appBridge.language)
+            font.pixelSize: typography.small
+        }
+
+        HaloIconButton {
+            anchors.right: parent.right
+            anchors.rightMargin: 18
+            anchors.verticalCenter: composer.verticalCenter
+            diameter: 38
+            symbol: "\u25B3"
+            active: true
+            onActivated: root.sendCurrentText()
         }
     }
 }

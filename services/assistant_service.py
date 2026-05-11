@@ -16,6 +16,7 @@ class AssistantService(QThread):
     user_text = Signal(str)
     assistant_text = Signal(str)
     text_failed = Signal(str)
+    voice_level = Signal(float)
 
     def __init__(self, config: AssistantConfig):
         super().__init__()
@@ -43,6 +44,7 @@ class AssistantService(QThread):
                 on_assistant_text=self.assistant_text.emit,
                 on_log=self.log.emit,
                 on_state=self.state_changed.emit,
+                on_voice_level=self.voice_level.emit,
             )
             start = time.perf_counter()
             self.is_ready = self.assistant.load_models(progress_callback=self._progress)
@@ -110,16 +112,11 @@ class AssistantService(QThread):
 
         def worker() -> None:
             try:
-                self.state_changed.emit("thinking", "Lumi is composing a response.")
-                self.log.emit("Lumi is composing a response...")
                 assistant.respond_to_text(text, speak=True, emit_user=True)
-                self.state_changed.emit("replying", "Lumi is shaping a response.")
-                self.state_changed.emit("ready", "Lumi is present.")
             except Exception as exc:
                 message = f"Text conversation failed: {exc}"
-                self.log.emit(message)
+                self.set_state("failed", message)
                 self.text_failed.emit(message)
-                self.state_changed.emit("failed", message)
 
         self._text_thread = threading.Thread(target=worker, daemon=True)
         self._text_thread.start()
@@ -184,7 +181,6 @@ class AssistantService(QThread):
     def stop_conversation(self) -> None:
         with QMutexLocker(self._mutex):
             if self.assistant:
-                self.state_changed.emit("present", "Stopping voice conversation...")
                 self.assistant.stop()
                 if self.is_ready:
                     self.state_changed.emit("ready", "Models are ready.")

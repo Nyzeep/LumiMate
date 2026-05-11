@@ -9,58 +9,49 @@ Item {
     property string subtitle: ""
     property string tier: "primary"
     property bool active: false
+    property string symbol: "✦"
     signal activated()
 
-    width: 230
-    height: tier === "primary" ? 86 : 74
+    width: 246
+    height: tier === "primary" ? 88 : 78
 
     readonly property real hoverAmount: hitArea.containsMouse ? 1 : 0
 
-    Rectangle {
+    GlassPanel {
         anchors.fill: parent
-        radius: 30
-        color: root.tier === "primary"
-            ? Qt.rgba(0.09, 0.14, 0.24, 0.88)
+        tone: root.tier === "primary" ? "strong" : "soft"
+        glowOpacity: root.active ? 0.16 : (root.tier === "primary" ? 0.12 : 0.06) + root.hoverAmount * 0.06
+        fillColor: root.tier === "primary"
+            ? Qt.rgba(0.09, 0.14, 0.24, 0.84)
             : root.tier === "secondary"
-                ? Qt.rgba(0.08, 0.13, 0.22, 0.74)
-                : Qt.rgba(0.07, 0.11, 0.18, 0.46)
-        border.width: 1
-        border.color: root.active || root.hoverAmount > 0
-            ? Qt.rgba(0.96, 0.78, 0.63, 0.44)
-            : Qt.rgba(0.60, 0.69, 0.82, 0.18)
+                ? Qt.rgba(0.08, 0.12, 0.22, 0.72)
+                : Qt.rgba(0.06, 0.10, 0.18, 0.48)
+        edgeColor: root.active || root.hoverAmount > 0
+            ? Qt.rgba(0.96, 0.78, 0.63, 0.40)
+            : Qt.rgba(0.64, 0.57, 0.68, 0.18)
     }
 
-    AmbientGlow {
-        anchors.centerIn: parent
-        width: parent.width * 0.74
-        height: width
-        glowColor: colors.amber
-        glowOpacity: root.tier === "primary" ? 0.10 + root.hoverAmount * 0.10 : 0.05 + root.hoverAmount * 0.05
-    }
-
-    Rectangle {
-        x: 18
-        y: parent.height / 2 - 20
-        width: 40
-        height: 40
-        radius: 20
-        color: Qt.rgba(0.95, 0.77, 0.62, 0.10)
-        border.width: 1
-        border.color: Qt.rgba(0.95, 0.77, 0.62, 0.24)
+    HaloIconButton {
+        x: 14
+        anchors.verticalCenter: parent.verticalCenter
+        diameter: 44
+        symbol: root.symbol
+        active: root.active || root.hoverAmount > 0
+        clickable: false
     }
 
     Text {
         x: 72
-        y: 22
+        y: 18
         text: root.label
         color: colors.neuralWhite
-        font.family: typography.sans(appBridge ? appBridge.language : "zh-CN")
+        font.family: typography.display(appBridge ? appBridge.language : "zh-CN")
         font.pixelSize: typography.section
     }
 
     Text {
         x: 72
-        y: 48
+        y: 45
         width: parent.width - x - 16
         text: root.subtitle
         color: colors.dimText

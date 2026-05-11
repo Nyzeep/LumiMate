@@ -1,6 +1,6 @@
 # LumiMate
 
-LumiMate is a desktop AI companion built as a spatial emotional system. The current runtime uses `Python + PySide6 + Qt Quick/QML` and presents five primary spaces: `Home`, `Chat`, `Companion`, `Workbench`, and `Settings`.
+LumiMate is a desktop AI companion built as a spatial emotional system. The current runtime uses `Python + PySide6 + QWebEngineView + Vue 3`, with Python owning the backend logic and the web layer owning all visual rendering.
 
 ## Run
 
@@ -9,6 +9,15 @@ Create a virtual environment and install dependencies:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Build the WebEngine frontend:
+
+```powershell
+cd ui\web
+npm install
+npm run build
+cd ..\..
 ```
 
 Launch the app:
@@ -23,6 +32,12 @@ Or run directly:
 python main.py
 ```
 
+For a windowed development launch instead of fullscreen:
+
+```powershell
+python main.py --windowed
+```
+
 ## Structure
 
 ```text
@@ -30,8 +45,9 @@ config/       Runtime config, defaults, and user settings
 controllers/  UI-to-service controller flow
 core/         Bootstrap, integrity, i18n, and voice assistant core
 services/     Model loading, runtime service, and updater
-ui/bridge/    PySide6 bridge objects exposed to QML
-ui/qml/       Scene runtime, design system, components, shaders
+ui/bridge/    PySide6 bridge objects exposed to QWebChannel
+ui/web/       Vue 3 WebEngine frontend
+ui/qml/       Legacy QML runtime kept temporarily as a fallback
 resources/    Reference audio and visual assets
 tools/        Local maintenance scripts
 ```
@@ -40,12 +56,12 @@ tools/        Local maintenance scripts
 
 The spatial UI is centered on:
 
-- `ui/qml/scenes/` for the five primary spaces
-- `ui/qml/components/` for reusable ritual/orbit/glass primitives
-- `ui/qml/design_system/` for color, type, motion, geometry, and depth
-- `ui/qml/shaders/` for future GPU passes with graceful fallback
+- `main.py` for the transparent frameless WebEngine container
+- `ui/bridge/` for QWebChannel objects used by the frontend
+- `ui/web/src/` for the Vue home space, global visual system, and SVG geometric interface
+- `背景图片/` for the existing project backgrounds; the frontend selects them through `appBridge`
 
-`Workbench` scans the local `models/` tree automatically and exposes ASR, LLM, and TTS candidates as visual nodes instead of manual path fields.
+The hybrid architecture keeps the background assets in Python-controlled mappings while the WebEngine frontend renders the full glassmorphism interface.
 
 ## Runtime Dependencies
 
