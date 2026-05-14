@@ -14,6 +14,8 @@ env/
 .idea/
 .vscode/
 .codex/
+.agents/
+skills-lock.json
 
 # Build and cache output
 build/
