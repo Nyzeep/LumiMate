@@ -20,14 +20,38 @@ function loadQtWebChannelScript() {
   });
 }
 
-export async function createBridgeObjects() {
-  await loadQtWebChannelScript();
+function waitForTransport(timeoutMs = 4000, intervalMs = 48) {
   return new Promise((resolve) => {
-    if (!window.qt?.webChannelTransport || !window.QWebChannel) {
-      resolve(null);
-      return;
+    const startedAt = Date.now();
+
+    function poll() {
+      if (window.qt?.webChannelTransport && window.QWebChannel) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+      window.setTimeout(poll, intervalMs);
     }
 
+    poll();
+  });
+}
+
+export async function createBridgeObjects() {
+  const scriptReady = await loadQtWebChannelScript();
+  if (!scriptReady) {
+    return null;
+  }
+
+  const transportReady = await waitForTransport();
+  if (!transportReady) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
     new window.QWebChannel(window.qt.webChannelTransport, (channel) => {
       resolve(channel.objects);
     });

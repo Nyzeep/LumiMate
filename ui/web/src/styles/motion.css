@@ -1,0 +1,120 @@
+:root {
+  --duration-xs: 160ms;
+  --duration-sm: 220ms;
+  --duration-md: 360ms;
+  --duration-lg: 520ms;
+  --duration-xl: 760ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.32, 0, 0.22, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-breath: 12s;
+  --motion-orbit: 20s;
+  --motion-drift: 30s;
+  --motion-slow: 8s;
+}
+
+@keyframes lumi-breathe {
+  0%,
+  100% {
+    transform: scale(0.985);
+    opacity: 0.68;
+  }
+  50% {
+    transform: scale(1.018);
+    opacity: 1;
+  }
+}
+
+@keyframes lumi-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lumi-drift {
+  0%,
+  100% {
+    transform: translate3d(-2%, -1%, 0) scale(0.98);
+    opacity: 0.26;
+  }
+  50% {
+    transform: translate3d(2%, 1.5%, 0) scale(1.04);
+    opacity: 0.42;
+  }
+}
+
+@keyframes lumi-twinkle {
+  0%,
+  100% {
+    opacity: 0.24;
+    transform: scale(0.88);
+  }
+  40% {
+    opacity: 0.84;
+    transform: scale(1.16);
+  }
+  60% {
+    opacity: 0.42;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes lumi-pulse {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.58;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes lumi-message-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+[data-promoted-layer="true"] {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  contain: paint;
+}
+
+.message-fade-enter-active {
+  animation: lumi-message-enter var(--duration-md) var(--ease-standard);
+}
+
+.message-fade-leave-active {
+  transition: opacity var(--duration-sm) var(--ease-standard), transform var(--duration-sm) var(--ease-standard);
+}
+
+.message-fade-leave-to {
+  opacity: 0;
+  transform: translate3d(0, -10px, 0);
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

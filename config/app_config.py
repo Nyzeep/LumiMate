@@ -10,11 +10,19 @@ RESOURCES_ROOT = PROJECT_ROOT / "resources"
 PROMPT_WAV_CONFIG = RESOURCES_ROOT / "prompt_wav.json"
 USER_SETTINGS_PATH = PROJECT_ROOT / "config" / "user_settings.json"
 APP_VERSION = "0.2.0"
-APP_AUTHOR = "LumiMate Team"
+APP_AUTHOR = "Nyzeep"
+PROJECT_URL = "https://github.com/Nyzeep/LumiMate"
 APP_PHILOSOPHY = "A spatial AI companion system with emotion, ritual, and breath."
 UPDATE_MANIFEST_URL = ""
 DEFAULT_REF_WAV = "zh_vo_Main_Linaxita_2_1_10_26.wav"
 DEFAULT_REF_TEXT = "在每一个安静的夜里，Lumi 都会在这里等你。"
+DEFAULT_AMBIENT_MODE = "quiet"
+VALID_AMBIENT_MODES = {"quiet", "breath", "stream"}
+
+
+def _normalize_ambient_mode(value: str) -> str:
+    mode = str(value or DEFAULT_AMBIENT_MODE).strip().lower()
+    return mode if mode in VALID_AMBIENT_MODES else DEFAULT_AMBIENT_MODE
 
 
 def _reference_prompt() -> tuple[Path, str]:
@@ -48,6 +56,7 @@ class UserSettings:
     check_update_on_startup: bool = False
     startup_page: str = "home"
     reduce_motion: bool = False
+    ambient_mode: str = DEFAULT_AMBIENT_MODE
 
     @classmethod
     def load(cls) -> "UserSettings":
@@ -58,6 +67,7 @@ class UserSettings:
                 check_update_on_startup=bool(payload.get("check_update_on_startup", False)),
                 startup_page=str(payload.get("startup_page") or "home"),
                 reduce_motion=bool(payload.get("reduce_motion", False)),
+                ambient_mode=_normalize_ambient_mode(payload.get("ambient_mode", DEFAULT_AMBIENT_MODE)),
             )
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return cls()
@@ -72,6 +82,7 @@ class UserSettings:
                         "check_update_on_startup": self.check_update_on_startup,
                         "startup_page": self.startup_page,
                         "reduce_motion": self.reduce_motion,
+                        "ambient_mode": _normalize_ambient_mode(self.ambient_mode),
                     },
                     ensure_ascii=False,
                     indent=2,

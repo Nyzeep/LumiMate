@@ -1,0 +1,71 @@
+:root {
+  color-scheme: dark;
+  --color-space-950: #061125;
+  --color-space-900: #09172e;
+  --color-space-850: #0e1c36;
+  --color-glass: rgba(20, 25, 40, 0.05);
+  --color-glass-strong: rgba(20, 25, 40, 0.12);
+  --color-glass-overlay: rgba(255, 255, 255, 0.03);
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-soft: rgba(255, 222, 196, 0.12);
+  --color-text: #f6ede4;
+  --color-muted: #d0c6bf;
+  --color-dim: #a79faa;
+  --color-ink-soft: rgba(0, 0, 0, 0.28);
+  --color-amber: #ffb676;
+  --color-amber-soft: #ffd0a2;
+  --color-amber-glow: rgba(255, 140, 0, 0.42);
+  --color-rose: #e5a97f;
+  --color-green: #a8cfbc;
+  --color-blue: #91a6c8;
+  --font-ui: "Microsoft YaHei UI", "PingFang SC", "Source Han Sans SC", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Cascadia Mono", Consolas, monospace;
+
+  --text-hero: clamp(48px, 4.2vw, 82px);
+  --text-section: clamp(30px, 2.3vw, 44px);
+  --text-card: 18px;
+  --text-body: 15px;
+  --text-body-compact: 14px;
+  --text-meta: 13px;
+  --text-status: 12px;
+  --line-body: 1.72;
+  --line-tight: 1.34;
+  --tracking-mono: 1px;
+
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 20px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+  --space-8: 56px;
+  --space-9: 72px;
+
+  --radius-xs: 12px;
+  --radius-sm: 16px;
+  --radius-md: 22px;
+  --radius-lg: 28px;
+  --radius-pill: 999px;
+  --radius-card: 18px;
+  --radius-shell: 22px;
+
+  --blur-panel: 24px;
+  --blur-ambient: 48px;
+  --border-hairline: 0.5px;
+  --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 2px rgba(255, 255, 255, 0.92), 0 0 16px rgba(255, 140, 0, 0.24), 0 0 44px rgba(255, 140, 0, 0.1);
+
+  --content-max: 1600px;
+  --safe-top: 28px;
+  --safe-side: 32px;
+  --safe-bottom: 36px;
+
+  --z-background: 0;
+  --z-ambient: 6;
+  --z-content: 12;
+  --z-header: 24;
+  --z-drawer: 40;
+  --z-diagnostics: 52;
+  --z-boot: 60;
+}

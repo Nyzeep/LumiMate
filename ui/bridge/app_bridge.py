@@ -6,8 +6,10 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Property, QUrl, Signal, Slot
 
-from config import APP_AUTHOR, APP_PHILOSOPHY, APP_VERSION, PROJECT_ROOT, UPDATE_MANIFEST_URL, UserSettings
+from config import APP_AUTHOR, APP_PHILOSOPHY, APP_VERSION, PROJECT_ROOT, PROJECT_URL, UPDATE_MANIFEST_URL, UserSettings
 from core.i18n import tr
+
+VALID_AMBIENT_MODES = {"quiet", "breath", "stream"}
 
 SCENE_GROUPS = [
     {
@@ -22,7 +24,7 @@ SCENE_GROUPS = [
                 "titleEn": "Home Space",
                 "component": "HomeScene.qml",
                 "backgroundAsset": "background2",
-                "icon": "△",
+                "icon": "core-home",
             },
             {
                 "id": "chat",
@@ -31,7 +33,7 @@ SCENE_GROUPS = [
                 "titleEn": "Chat Space",
                 "component": "ChatScene.qml",
                 "backgroundAsset": "background3",
-                "icon": "◌",
+                "icon": "core-chat",
             },
             {
                 "id": "companion",
@@ -40,7 +42,7 @@ SCENE_GROUPS = [
                 "titleEn": "Companion Space",
                 "component": "CompanionScene.qml",
                 "backgroundAsset": "background4",
-                "icon": "✦",
+                "icon": "core-companion",
             },
         ],
     },
@@ -56,7 +58,7 @@ SCENE_GROUPS = [
                 "titleEn": "Workbench",
                 "component": "WorkbenchScene.qml",
                 "backgroundAsset": "background1",
-                "icon": "◈",
+                "icon": "runtime-workbench",
             },
             {
                 "id": "loading",
@@ -65,7 +67,7 @@ SCENE_GROUPS = [
                 "titleEn": "Loading Space",
                 "component": "LoadingScene.qml",
                 "backgroundAsset": "background1",
-                "icon": "◎",
+                "icon": "runtime-loading",
             },
             {
                 "id": "storage",
@@ -74,7 +76,7 @@ SCENE_GROUPS = [
                 "titleEn": "Storage",
                 "component": "StorageScene.qml",
                 "backgroundAsset": "background1",
-                "icon": "⬡",
+                "icon": "runtime-storage",
             },
         ],
     },
@@ -90,7 +92,7 @@ SCENE_GROUPS = [
                 "titleEn": "Settings",
                 "component": "SettingsScene.qml",
                 "backgroundAsset": "background3",
-                "icon": "⌘",
+                "icon": "inner-settings",
             },
             {
                 "id": "personality",
@@ -99,7 +101,7 @@ SCENE_GROUPS = [
                 "titleEn": "Personality",
                 "component": "PersonalityScene.qml",
                 "backgroundAsset": "background3",
-                "icon": "◇",
+                "icon": "inner-personality",
             },
             {
                 "id": "about",
@@ -108,7 +110,7 @@ SCENE_GROUPS = [
                 "titleEn": "About Lumi",
                 "component": "AboutScene.qml",
                 "backgroundAsset": "background1",
-                "icon": "☉",
+                "icon": "inner-about",
             },
         ],
     },
@@ -132,6 +134,11 @@ VALID_SCENES = set(SCENE_LOOKUP)
 SCENE_IDS = [scene["id"] for group in SCENE_GROUPS for scene in group["scenes"]]
 
 
+def _normalize_ambient_mode(value: str) -> str:
+    mode = str(value or "quiet").strip().lower()
+    return mode if mode in VALID_AMBIENT_MODES else "quiet"
+
+
 class AppBridge(QObject):
     currentPageChanged = Signal()
     currentSceneGroupChanged = Signal()
@@ -139,6 +146,7 @@ class AppBridge(QObject):
     languageRevisionChanged = Signal()
     settingsChanged = Signal()
     updateRequested = Signal()
+    ambientModeChanged = Signal()
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -146,6 +154,7 @@ class AppBridge(QObject):
         self._settings = UserSettings.load()
         if self._settings.language not in {"zh-CN", "en-US"}:
             self._settings.language = "zh-CN"
+        self._settings.ambient_mode = _normalize_ambient_mode(self._settings.ambient_mode)
         self._current_page = self._normalize_scene(self._settings.startup_page)
         current_meta = SCENE_LOOKUP[self._current_page]
         self._current_scene_group_index = int(current_meta["groupIndex"])
@@ -194,6 +203,10 @@ class AppBridge(QObject):
     def reduceMotion(self) -> bool:
         return self._settings.reduce_motion
 
+    @Property(str, notify=ambientModeChanged)
+    def ambientMode(self) -> str:
+        return _normalize_ambient_mode(self._settings.ambient_mode)
+
     @Property(str, constant=True)
     def appVersion(self) -> str:
         return APP_VERSION
@@ -213,6 +226,14 @@ class AppBridge(QObject):
     @Property(str, constant=True)
     def pythonExecutable(self) -> str:
         return sys.executable
+
+    @Property(str, constant=True)
+    def projectUrl(self) -> str:
+        return PROJECT_URL
+
+    @Property(str, constant=True)
+    def authorAvatarUrl(self) -> str:
+        return self.assetUrl("authorAvatar")
 
     @Property(str, constant=True)
     def updateSource(self) -> str:
@@ -255,8 +276,20 @@ class AppBridge(QObject):
         self._settings.check_update_on_startup = bool(check_update_on_startup)
         self._settings.startup_page = self._normalize_scene(startup_page)
         self._settings.reduce_motion = bool(reduce_motion)
+        self._settings.ambient_mode = _normalize_ambient_mode(self._settings.ambient_mode)
         self._settings.save()
         self.settingsChanged.emit()
+
+    @Slot(str, result=bool)
+    def setAmbientMode(self, mode: str) -> bool:
+        normalized = _normalize_ambient_mode(mode)
+        if normalized == self._settings.ambient_mode:
+            return True
+        self._settings.ambient_mode = normalized
+        saved = self._settings.save()
+        self.ambientModeChanged.emit()
+        self.settingsChanged.emit()
+        return saved
 
     @Slot(str)
     def setLanguage(self, language: str) -> None:

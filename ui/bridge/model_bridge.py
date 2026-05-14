@@ -220,6 +220,44 @@ class ModelBridge(QObject):
     def modelRoot(self) -> str:
         return str(PROJECT_ROOT / "models")
 
+    @Property("QVariantMap", notify=selectionChanged)
+    def modelCatalog(self):
+        return {
+            "asr": self._build_model_entries(
+                "asr",
+                self._asr_models,
+                self._selected_asr,
+                "Listening Node",
+                self._state == "loading_asr",
+            ),
+            "llm": self._build_model_entries(
+                "llm",
+                self._llm_models,
+                self._selected_llm,
+                "Reasoning Core",
+                self._state in {"loading_llm", "ready", "listening", "thinking", "replying"},
+            ),
+            "tts": self._build_model_entries(
+                "tts",
+                self._tts_models,
+                self._selected_tts,
+                "Voice Node",
+                self._state == "loading_tts" or self._loaded,
+            ),
+            "reference": [
+                {
+                    "id": f"reference:{self._selected_ref_audio or 'memory'}",
+                    "title": self._friendly_title(self._selected_ref_audio) or "Reference Audio",
+                    "subtitle": self._selected_ref_text or "Quiet memory sample",
+                    "tags": ["Reference", "Memory"],
+                    "status": "selected" if self._selected_ref_audio else "idle",
+                    "selected": bool(self._selected_ref_audio),
+                    "kind": "reference",
+                    "path": self._selected_ref_audio,
+                }
+            ],
+        }
+
     @Slot()
     def scanModels(self) -> None:
         models_root = PROJECT_ROOT / "models"
@@ -358,3 +396,53 @@ class ModelBridge(QObject):
             )
         self._storage_used_bytes = tracked_total
         self.storageChanged.emit()
+
+    def _build_model_entries(
+        self,
+        kind: str,
+        items: list[str],
+        selected_path: str,
+        subtitle: str,
+        runtime_active: bool,
+    ) -> list[dict[str, object]]:
+        payload: list[dict[str, object]] = []
+        for path in items:
+            is_selected = path == selected_path
+            status = "active" if runtime_active and is_selected else "selected" if is_selected else "ready"
+            tags = [kind.upper()]
+            if is_selected:
+                tags.append("Selected")
+            if runtime_active and is_selected:
+                tags.append("Active")
+            payload.append(
+                {
+                    "id": f"{kind}:{path}",
+                    "title": self._friendly_title(path),
+                    "subtitle": subtitle,
+                    "tags": tags,
+                    "status": status,
+                    "selected": is_selected,
+                    "kind": kind,
+                    "path": path,
+                }
+            )
+        if payload:
+            return payload
+        return [
+            {
+                "id": f"{kind}:empty",
+                "title": "No node detected",
+                "subtitle": subtitle,
+                "tags": [kind.upper(), "Empty"],
+                "status": "empty",
+                "selected": False,
+                "kind": kind,
+                "path": "",
+            }
+        ]
+
+    def _friendly_title(self, path: str) -> str:
+        if not path:
+            return ""
+        name = Path(path).name or Path(path).stem
+        return name.replace("_", " ").replace("-", " ").strip() or name

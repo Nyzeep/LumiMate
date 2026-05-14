@@ -1,5 +1,7 @@
 {
-  "language": "zh-CN",
+  "language": "en-US",
   "check_update_on_startup": true,
-  "startup_page": "workbench"
+  "startup_page": "workbench",
+  "reduce_motion": false,
+  "ambient_mode": "stream"
 }

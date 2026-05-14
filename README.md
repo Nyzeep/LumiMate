@@ -1,13 +1,47 @@
-# LumiMate
+<p align="center">
+  <img src="./resources/ui/author_avatar.jpg" width="92" alt="Nyzeep avatar" />
+</p>
 
-LumiMate 是一个以“空间情绪系统”为核心的桌面 AI 陪伴应用。当前运行时采用 `Python + PySide6 + QWebEngineView + Vue 3`：Python 负责窗口、桥接和底层逻辑，Web 前端负责完整视觉渲染。
+<h1 align="center">LumiMate</h1>
 
-LumiMate is a desktop AI companion built around a spatial emotional system. The current runtime uses `Python + PySide6 + QWebEngineView + Vue 3`: Python owns the window, bridge, and backend logic, while the web layer owns the full visual interface.
+<p align="center">
+  A quiet spatial AI companion. 一个安静、会呼吸的桌面 AI 陪伴空间。
+</p>
 
-## 运行 / Run
+<p align="center">
+  <a href="https://github.com/Nyzeep/LumiMate"><img alt="Repository" src="https://img.shields.io/badge/repository-LumiMate-061125?style=flat-square&labelColor=09172E&color=E5A97F"></a>
+  <img alt="Author" src="https://img.shields.io/badge/author-Nyzeep-061125?style=flat-square&labelColor=09172E&color=F2C39B">
+  <img alt="Status" src="https://img.shields.io/badge/status-active%20prototype-061125?style=flat-square&labelColor=09172E&color=A8CFBC">
+  <img alt="License" src="https://img.shields.io/badge/license-not%20specified-061125?style=flat-square&labelColor=09172E&color=8B7890">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.x-061125?style=flat-square&labelColor=09172E&color=E5A97F">
+  <img alt="PySide6" src="https://img.shields.io/badge/PySide6-Qt%20Desktop-061125?style=flat-square&labelColor=09172E&color=F2C39B">
+  <img alt="Qt WebEngine" src="https://img.shields.io/badge/Qt-WebEngine-061125?style=flat-square&labelColor=09172E&color=8B7890">
+  <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-061125?style=flat-square&labelColor=09172E&color=A8CFBC">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-frontend-061125?style=flat-square&labelColor=09172E&color=E5A97F">
+</p>
 
-创建虚拟环境并安装 Python 依赖：
+## 项目信息 / Project Info
 
+- 作者 / Author: `Nyzeep`
+- 仓库 / Repository: `https://github.com/Nyzeep/LumiMate`
+- 技术栈 / Stack: `Python + PySide6 + Qt WebEngine + Vue 3 + Vite`
+
+LumiMate 是一个围绕“空间化陪伴体验”构建的桌面 AI 项目。Python 负责窗口、桥接、模型加载与本地服务；Vue 3 负责完整视觉界面、场景切换、动效系统与交互表达。
+
+LumiMate is a desktop AI companion built around a spatial presence experience. Python owns the window, bridge, model loading, and local services; Vue 3 owns the visual interface, scene system, motion, and interaction layer.
+
+## 功能亮点 / Highlights
+
+- 九个沉浸式空间 / Nine immersive spaces: home, chat, companion, workbench, loading, storage, settings, personality, and about.
+- WebEngine 混合架构 / Hybrid WebEngine runtime: native desktop shell with a modern web UI.
+- QWebChannel 通信 / QWebChannel bridge: frontend requests are routed through Python instead of direct file IO.
+- 几何星空视觉系统 / Geometric starry visual system: glass panels, thin SVG geometry, amber bloom, and slow breathing motion.
+- 模型工作台 / Model workbench: model cards, structured status, loading feedback, and local resource management.
+- 运行时动效层 / Runtime motion layer: ambient modes, reduced-motion support, and development diagnostics HUD.
+
+## 快速开始 / Quick Start
+
+创建虚拟环境并安装 Python 依赖：  
 Create a virtual environment and install Python dependencies:
 
 ```powershell
@@ -15,9 +49,8 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-构建 WebEngine 前端：
-
-Build the WebEngine frontend:
+构建前端：  
+Build the frontend:
 
 ```powershell
 cd ui\web
@@ -26,70 +59,70 @@ npm run build
 cd ..\..
 ```
 
-启动应用：
-
+启动程序：  
 Launch the app:
 
 ```bat
 run_lumi.bat
 ```
 
-也可以直接运行：
-
-Or run directly:
-
-```powershell
-python main.py
-```
-
-默认启动为全屏；开发调试时可以使用窗口模式：
-
-The default launch is fullscreen. Use windowed mode for development:
+开发时也可以使用窗口模式：  
+Use windowed mode during development:
 
 ```powershell
-python main.py --windowed
+.\.venv\Scripts\python.exe main.py --windowed
 ```
 
-## 目录结构 / Structure
+## 开发命令 / Development
+
+```powershell
+# Web frontend build
+cd ui\web
+npm run build
+
+# WebEngine entry check
+cd ..\..
+.\.venv\Scripts\python.exe main.py --check
+
+# Direct launch
+.\.venv\Scripts\python.exe main.py
+```
+
+## 架构说明 / Architecture
 
 ```text
-config/       运行配置、默认值和用户设置 / Runtime config, defaults, and user settings
-controllers/  UI 与服务层控制流 / UI-to-service controller flow
-core/         启动、完整性检查、国际化和语音核心 / Bootstrap, integrity, i18n, and voice assistant core
-services/     模型加载、运行时服务和更新器 / Model loading, runtime service, and updater
-ui/bridge/    暴露给 QWebChannel 的 PySide6 桥接对象 / PySide6 bridge objects exposed to QWebChannel
-ui/web/       Vue 3 WebEngine 前端 / Vue 3 WebEngine frontend
-ui/qml/       暂时保留的旧 QML 回退界面 / Legacy QML runtime kept temporarily as a fallback
-resources/    参考音频与视觉资源 / Reference audio and visual assets
-tools/        本地维护脚本 / Local maintenance scripts
-背景图片/      项目现有背景资源 / Existing project background assets
+main.py       Desktop shell, WebEngine container, startup checks
+ui/bridge/    PySide6 objects exposed to the frontend through QWebChannel
+ui/web/       Vue 3 scenes, components, styles, and runtime UI engine
+controllers/  Application orchestration and service calls
+services/     Assistant runtime, model loading, and update flow
+config/       Runtime defaults, app metadata, and user settings
+resources/    Audio prompts and interface assets
+背景图片/      Existing project background images
 ```
 
-## UI 架构 / UI Runtime
+The current UI path is WebEngine-first. The legacy QML layer is kept as a frozen fallback and is not the primary interface.
 
-空间界面主要由以下部分组成：
+当前主路径是 WebEngine 前端。旧 QML 层仅作为冻结的回退实现保留，不再作为主要界面演进方向。
 
-The spatial UI is centered on:
+## 资源要求 / Runtime Assets
 
-- `main.py`：透明、无边框的 WebEngine 容器 / transparent frameless WebEngine container
-- `ui/bridge/`：前端通过 QWebChannel 调用的桥接对象 / QWebChannel objects used by the frontend
-- `ui/web/src/`：Vue 首页空间、全局视觉系统和 SVG 几何界面 / Vue home space, global visual system, and SVG geometric interface
-- `背景图片/`：现有项目背景图，前端通过 `appBridge` 获取 / existing backgrounds selected through `appBridge`
-
-混合架构会把背景资源映射、模型加载、文件访问等底层能力留在 Python 侧；WebEngine 前端只负责沉浸式玻璃拟态 UI、页面状态和交互表达。
-
-The hybrid architecture keeps background mappings, model loading, and file access in Python. The WebEngine frontend focuses on the immersive glassmorphism UI, scene state, and interaction layer.
-
-## 运行依赖 / Runtime Dependencies
-
-模型加载仍依赖本地 ASR / TTS 包和本地模型资源。完整语音交互需要确认以下资源存在：
-
-Model loading still depends on local ASR / TTS packages and local model assets. For full voice interaction, make sure these resources are present:
+完整语音与模型能力依赖本地运行资源，请确认以下目录或资产存在：  
+Full voice and model features depend on local runtime assets. Make sure these resources are available:
 
 - `models/`
 - `GenieData/`
-- any required precompiled `flash_attn` resources
+- required local ASR / LLM / TTS assets
+- required precompiled `flash_attn` assets when your model stack needs them
 
-这些大型运行时资源不会默认提交到仓库。
-
+这些大型运行时资源默认不会提交到仓库。  
 These large runtime assets are not committed to the repository by default.
+
+## 注意事项 / Notes
+
+- 背景图使用项目内既有资源，不依赖外部下载路径。  
+  Backgrounds are loaded from existing project assets, not external download paths.
+- 前端只通过 QWebChannel 调用底层能力，不直接扫描路径或读写模型文件。  
+  The frontend talks to backend capabilities through QWebChannel and does not directly scan paths or mutate model files.
+- 更新清单地址和项目仓库地址是两个不同概念，避免把 GitHub 首页当作自动更新 manifest。  
+  The update manifest URL and project repository URL are intentionally separate.
