@@ -18,10 +18,9 @@ class ShellBridge(QObject):
 
     @Slot(result=bool)
     def frontendReady(self) -> bool:
-        if self._frontend_ready:
-            return False
-        self._frontend_ready = True
-        self._set_phase("frontend-ready")
+        if not self._frontend_ready:
+            self._frontend_ready = True
+            self._set_phase("frontend-ready")
         self.frontendReadyRequested.emit()
         return True
 

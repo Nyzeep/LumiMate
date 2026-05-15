@@ -7,6 +7,65 @@ from PySide6.QtCore import QObject, Property, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
 from config import AssistantConfig, PROJECT_ROOT
+from services.model_download_service import ModelDownloadRequest, ModelDownloadService
+
+
+MODEL_DOWNLOAD_CATALOG: dict[str, list[dict[str, object]]] = {
+    "asr": [
+        {
+            "id": "qwen3-asr-flash",
+            "title": "Qwen3 ASR Flash",
+            "subtitle": "轻量听觉节点，适合作为 Lumi 的默认耳朵。",
+            "sizeLabel": "约 5 GB",
+            "providers": {
+                "modelscope": "Qwen/Qwen3-ASR-Flash",
+                "huggingface": "Qwen/Qwen3-ASR-Flash",
+            },
+        },
+        {
+            "id": "qwen2-audio-7b",
+            "title": "Qwen2 Audio 7B",
+            "subtitle": "更完整的音频理解节点，下载和运行成本更高。",
+            "sizeLabel": "约 15 GB",
+            "providers": {
+                "modelscope": "qwen/Qwen2-Audio-7B-Instruct",
+                "huggingface": "Qwen/Qwen2-Audio-7B-Instruct",
+            },
+        },
+    ],
+    "llm": [
+        {
+            "id": "qwen2-5-0-5b-instruct",
+            "title": "Qwen2.5 0.5B Instruct",
+            "subtitle": "小体量思维核心，适合先让 Lumi 轻盈醒来。",
+            "sizeLabel": "约 1 GB",
+            "providers": {
+                "modelscope": "qwen/Qwen2.5-0.5B-Instruct",
+                "huggingface": "Qwen/Qwen2.5-0.5B-Instruct",
+            },
+        },
+        {
+            "id": "qwen2-5-1-5b-instruct",
+            "title": "Qwen2.5 1.5B Instruct",
+            "subtitle": "更稳的本地对话核心，需要更多显存与磁盘空间。",
+            "sizeLabel": "约 3 GB",
+            "providers": {
+                "modelscope": "qwen/Qwen2.5-1.5B-Instruct",
+                "huggingface": "Qwen/Qwen2.5-1.5B-Instruct",
+            },
+        },
+    ],
+    "tts": [
+        {
+            "id": "tts-placeholder",
+            "title": "声线星系预留",
+            "subtitle": "TTS 将在后续版本支持用户自行加载角色声线模型。",
+            "sizeLabel": "稍后开放",
+            "providers": {},
+            "placeholder": True,
+        }
+    ],
+}
 
 
 def _discover_leaf_directories(root: Path) -> list[str]:
@@ -66,6 +125,11 @@ class ModelBridge(QObject):
     discoveryChanged = Signal()
     selectionChanged = Signal()
     storageChanged = Signal()
+    componentStatusChanged = Signal()
+    downloadCatalogChanged = Signal()
+    downloadStateChanged = Signal()
+    downloadProgressChanged = Signal()
+    downloadLogAdded = Signal(str)
 
     def __init__(self, controller, parent=None):
         super().__init__(parent)
@@ -91,6 +155,11 @@ class ModelBridge(QObject):
         self._storage_used_bytes = 0
         self._storage_total_bytes = 0
         self._storage_free_bytes = 0
+        self._download_service: ModelDownloadService | None = None
+        self._download_state = "idle"
+        self._download_progress = 0
+        self._download_message = "等待选择模型星系。"
+        self._download_logs: list[str] = []
 
         controller.state_changed.connect(self._on_state_changed)
         controller.progress.connect(self._on_progress)
@@ -220,6 +289,43 @@ class ModelBridge(QObject):
     def modelRoot(self) -> str:
         return str(PROJECT_ROOT / "models")
 
+    @Property("QVariantMap", notify=componentStatusChanged)
+    def componentStatus(self):
+        return {
+            "asr": self._build_component_status("asr", self._asr_models, self._selected_asr, "听觉节点"),
+            "llm": self._build_component_status("llm", self._llm_models, self._selected_llm, "思维核心"),
+            "tts": self._build_component_status(
+                "tts",
+                self._tts_models,
+                self._selected_tts,
+                "声线节点",
+                placeholder=not bool(self._tts_models),
+                note="TTS 远程下载暂未开放，后续将支持自行加载角色声线。",
+            ),
+            "ready": bool(self._asr_models and self._llm_models),
+            "missingRequired": [kind for kind, items in (("asr", self._asr_models), ("llm", self._llm_models)) if not items],
+        }
+
+    @Property("QVariantMap", notify=downloadCatalogChanged)
+    def downloadCatalog(self):
+        return MODEL_DOWNLOAD_CATALOG
+
+    @Property(str, notify=downloadStateChanged)
+    def downloadState(self) -> str:
+        return self._download_state
+
+    @Property(int, notify=downloadProgressChanged)
+    def downloadProgress(self) -> int:
+        return self._download_progress
+
+    @Property(str, notify=downloadStateChanged)
+    def downloadMessage(self) -> str:
+        return self._download_message
+
+    @Property("QVariantList", notify=downloadStateChanged)
+    def downloadLogs(self):
+        return self._download_logs[-10:]
+
     @Property("QVariantMap", notify=selectionChanged)
     def modelCatalog(self):
         return {
@@ -274,6 +380,7 @@ class ModelBridge(QObject):
         self._refresh_storage()
         self.discoveryChanged.emit()
         self.selectionChanged.emit()
+        self.componentStatusChanged.emit()
 
     @Slot(str, str)
     def selectModel(self, model_type: str, path: str) -> None:
@@ -286,6 +393,69 @@ class ModelBridge(QObject):
             self._selected_tts = path
             self._selected_tts_character = Path(path).name if path else self._selected_tts_character
         self.selectionChanged.emit()
+        self.componentStatusChanged.emit()
+
+    @Slot()
+    def scanComponents(self) -> None:
+        self._set_download_state("scanning", "正在扫描本地模型组件...")
+        self.scanModels()
+        if self._asr_models and self._llm_models:
+            self._set_download_state("idle", "核心组件已经就位。")
+        else:
+            self._set_download_state("idle", "仍有核心组件等待下载。")
+
+    @Slot()
+    def openModelGalaxy(self) -> None:
+        self._set_download_state("idle", "已打开模型星系选择。")
+
+    @Slot(str, str, str, str, result=bool)
+    def startModelDownload(self, kind: str, provider: str, model_id: str, display_name: str) -> bool:
+        kind = (kind or "").strip().lower()
+        provider = (provider or "").strip().lower()
+        model_id = (model_id or "").strip()
+        display_name = (display_name or "").strip() or model_id
+
+        if kind not in {"asr", "llm"}:
+            self._set_download_state("failed", "这个模型类型暂时不能远程下载。")
+            return False
+        if provider not in {"modelscope", "huggingface", "hf"}:
+            self._set_download_state("failed", "请选择魔搭社区或 Hugging Face 下载路线。")
+            return False
+        if not model_id:
+            self._set_download_state("failed", "没有收到可下载的模型 ID。")
+            return False
+        if self._download_service and self._download_service.isRunning():
+            self._set_download_state("downloading", "已有模型正在下载，请等待当前任务完成。")
+            return False
+
+        target_root = PROJECT_ROOT / "models" / f"{kind}_model"
+        request = ModelDownloadRequest(
+            kind=kind,
+            provider="huggingface" if provider == "hf" else provider,
+            model_id=model_id,
+            display_name=display_name,
+            target_root=target_root,
+        )
+        self._download_logs = []
+        self._download_progress = 0
+        self._download_service = ModelDownloadService(request, self)
+        self._download_service.state_changed.connect(self._on_download_state_changed)
+        self._download_service.progress_changed.connect(self._on_download_progress_changed)
+        self._download_service.log_added.connect(self._on_download_log_added)
+        self._download_service.finished_with_result.connect(self._on_download_finished)
+        self._set_download_state("downloading", f"正在准备下载 {display_name}。")
+        self.downloadProgressChanged.emit()
+        self._download_service.start()
+        return True
+
+    @Slot(result=bool)
+    def cancelModelDownload(self) -> bool:
+        if not self._download_service or not self._download_service.isRunning():
+            self._set_download_state("idle", "当前没有正在运行的下载任务。")
+            return False
+        self._download_service.cancel()
+        self._set_download_state("cancelled", "正在取消模型下载...")
+        return True
 
     @Slot(str)
     def setReferenceAudio(self, path: str) -> None:
@@ -370,6 +540,45 @@ class ModelBridge(QObject):
         self.logAdded.emit(message)
         self.discoveryChanged.emit()
 
+    def _on_download_state_changed(self, state: str, message: str) -> None:
+        self._set_download_state(state, message)
+
+    def _on_download_progress_changed(self, progress: int, message: str) -> None:
+        self._download_progress = max(0, min(100, int(progress)))
+        if message:
+            self._download_message = message
+        self.downloadProgressChanged.emit()
+        self.downloadStateChanged.emit()
+
+    def _on_download_log_added(self, message: str) -> None:
+        self._download_logs.append(self._soften_download_log(message))
+        self.downloadLogAdded.emit(message)
+        self.downloadStateChanged.emit()
+
+    def _on_download_finished(self, success: bool, kind: str, path: str, message: str) -> None:
+        if success and path:
+            self.scanModels()
+            self.selectModel(kind, path)
+            self._download_progress = 100
+            self._set_download_state("complete", "模型节点已经就位，可以返回核心舱唤醒 Lumi。")
+        else:
+            if self._download_state != "cancelled":
+                self._set_download_state("failed", "模型下载没有完成，请切换来源或稍后重试。")
+            self._on_download_log_added(message)
+        self._download_service = None
+        self.downloadProgressChanged.emit()
+
+    def _set_download_state(self, state: str, message: str) -> None:
+        self._download_state = state
+        self._download_message = message
+        self.downloadStateChanged.emit()
+
+    def _soften_download_log(self, message: str) -> str:
+        text = str(message or "").strip()
+        if not text:
+            return ""
+        return text.replace(str(PROJECT_ROOT), "本地空间")
+
     def _refresh_storage(self) -> None:
         targets = [
             ("storage.bucket.asr", PROJECT_ROOT / "models" / "asr_model"),
@@ -396,6 +605,28 @@ class ModelBridge(QObject):
             )
         self._storage_used_bytes = tracked_total
         self.storageChanged.emit()
+
+    def _build_component_status(
+        self,
+        kind: str,
+        items: list[str],
+        selected_path: str,
+        label: str,
+        placeholder: bool = False,
+        note: str = "",
+    ) -> dict[str, object]:
+        count = len(items)
+        ready = count > 0
+        return {
+            "kind": kind,
+            "label": label,
+            "ready": ready,
+            "count": count,
+            "selected": selected_path if ready else "",
+            "selectedName": self._friendly_title(selected_path) if ready else "",
+            "status": "ready" if ready else "placeholder" if placeholder else "missing",
+            "note": note or ("已检测到本地模型。" if ready else "等待下载或导入模型。"),
+        }
 
     def _build_model_entries(
         self,

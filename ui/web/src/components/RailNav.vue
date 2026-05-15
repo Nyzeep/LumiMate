@@ -38,7 +38,6 @@ const activeGroupMeta = computed(() => props.groups[props.currentGroup] || props
           class="rail-nav__group-button"
           :class="{ 'is-active': currentGroup === index }"
           :aria-label="group.title"
-          :title="group.title"
           @click.prevent="$emit('select-group', index)"
         >
           <span class="rail-nav__button-glow" aria-hidden="true"></span>
@@ -56,7 +55,6 @@ const activeGroupMeta = computed(() => props.groups[props.currentGroup] || props
           class="rail-nav__button"
           :class="{ 'is-active': currentScene === scene.id }"
           :aria-label="scene.title"
-          :title="scene.title"
           @click.prevent="$emit('navigate', scene.id)"
         >
           <span class="rail-nav__button-glow" aria-hidden="true"></span>

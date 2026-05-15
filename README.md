@@ -1,239 +1,183 @@
-<p align="center">
-  <img src="./resources/ui/author_avatar.jpg" width="92" alt="Nyzeep avatar" />
-</p>
-
 <h1 align="center">LumiMate</h1>
 
 <p align="center">
-  一个安静、深邃、会呼吸的桌面 AI 陪伴空间。
+  一个安静、会呼吸、带有空间感的桌面 AI 陪伴系统。
 </p>
 
 <p align="center">
-  <a href="https://github.com/Nyzeep/LumiMate"><img alt="Repository" src="https://img.shields.io/badge/repository-LumiMate-061125?style=flat-square&labelColor=09172E&color=E5A97F"></a>
-  <img alt="Author" src="https://img.shields.io/badge/author-Nyzeep-061125?style=flat-square&labelColor=09172E&color=F2C39B">
-  <img alt="Status" src="https://img.shields.io/badge/status-active%20prototype-061125?style=flat-square&labelColor=09172E&color=A8CFBC">
-  <img alt="License" src="https://img.shields.io/badge/license-not%20specified-061125?style=flat-square&labelColor=09172E&color=8B7890">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-061125?style=flat-square&labelColor=09172E&color=E5A97F">
-  <img alt="PySide6" src="https://img.shields.io/badge/PySide6-Qt%20Desktop-061125?style=flat-square&labelColor=09172E&color=F2C39B">
-  <img alt="Qt WebEngine" src="https://img.shields.io/badge/Qt-WebEngine-061125?style=flat-square&labelColor=09172E&color=8B7890">
-  <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-061125?style=flat-square&labelColor=09172E&color=A8CFBC">
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-frontend-061125?style=flat-square&labelColor=09172E&color=E5A97F">
+  <img src="./resources/ui/lumi_home_stage.png" width="920" alt="LumiMate 运行界面预览" />
 </p>
 
-## 项目信息
+<p align="center">
+  LumiMate 想做的不是“再开一个聊天窗口”，而是让你进入一个属于 Lumi 的数字空间：可以对话，可以陪伴，也可以用更直观的方式唤醒本地模型。
+</p>
 
-- 作者：`Nyzeep`
-- 仓库：`https://github.com/Nyzeep/LumiMate`
-- 技术栈：`Python + PySide6 + Qt WebEngine + QWebChannel + Vue 3 + Vite`
-- 当前定位：本地化桌面 AI 陪伴应用原型
+## 这是什么
 
-LumiMate 是一个围绕“空间化陪伴体验”构建的桌面 AI 项目。它不是普通工具式聊天窗口，而是一个以深蓝金色宇宙氛围、几何星空视觉语言和慢呼吸动效组成的数字意识空间。
+LumiMate 是一款桌面端 AI Companion 应用。它把聊天、语音、模型管理和设置放进一套统一的空间化界面里，让用户打开程序时更像是进入一个安静的 AI 空间，而不是面对一组冰冷的配置面板。
 
-Python 负责原生桌面窗口、系统桥接、模型加载、本地资源访问和运行时服务；Vue 3 负责完整视觉界面、九空间场景、动效系统、交互反馈和前端状态组织。
+它目前围绕五个主要空间组织体验：
 
-## 功能亮点
+- `Home`：欢迎、Lumi 状态、快速入口和今日情绪。
+- `Chat`：文字对话、语音聆听、回复状态和呼吸式反馈。
+- `Companion`：陪伴舞台，为后续 Live2D / Spine 或自定义角色扩展预留。
+- `Workbench`：模型核心舱与星系选择，用视觉化方式扫描、下载、切换和加载模型。
+- `Settings`：语言、启动、动效和基础系统设置。
 
-- 九个正式空间：首页、聊天空间、陪伴空间、工作台、加载空间、存储、设置、个性化、关于。
-- WebEngine 混合架构：使用 `QWebEngineView` 承载现代 Web UI，同时保留 Python 的本地能力。
-- QWebChannel 通信：前端通过桥接对象调用底层能力，不直接扫描路径或读写模型文件。
-- 几何星空视觉系统：毛玻璃面板、极细 SVG 几何、琥珀辉光、轨道呼吸、环境星点与低频动效。
-- 运行时 UI 引擎：统一管理场景切换、环境模式、动效偏好、诊断 HUD 和前端 ready 交接。
-- 模型工作台：通过结构化模型卡片展示节点角色、标签、状态和加载过程，避免在主界面暴露原始路径。
-- 作者信息与资源映射：项目地址、作者 Nyzeep、作者头像和背景资源都通过明确的配置与资产路径组织。
+## 你可以用它做什么
 
-## 技术架构
+- 和 Lumi 进行本地 AI 对话。
+- 使用 ASR / LLM / TTS 组成的本地模型链路。
+- 在 Workbench 中扫描本地 `models/` 目录。
+- 在“星系选择”中为 ASR 和 LLM 选择模型，并通过魔搭社区或 Hugging Face 下载。
+- 加载、切换和释放模型缓存。
+- 在深空风格的桌面界面里体验低频动效、情绪光效和空间化导航。
 
-### 桌面与后端层
+## 如何启动
 
-- `Python 3.10+`
-- `PySide6`
-- `Qt WebEngine`
-- `QWebChannel`
+如果你使用的是发布包或已经打包好的版本，通常只需要运行启动入口即可。LumiMate 会自动完成基础环境检查。
 
-主要职责：
+源码版当前入口是：
 
-- 应用启动与环境检查
-- 透明无边框桌面窗口
-- 全屏 / 窗口化 / 最小化 / 关闭控制
-- WebEngine 页面加载与启动遮罩
-- 桥接对象注册与前后端通信
-- 模型加载、路径扫描、文件 IO 与本地运行时服务
+```powershell
+python launcher.py
+```
 
-### 前端界面层
+启动器会做这些事：
 
-- `Vue 3`
-- `Vite`
-- CSS3 / SVG / Glassmorphism
+- 优先检测当前环境或项目 `.venv` 是否已经可用。
+- 如果环境已经完整，会直接启动程序。
+- 如果是首次运行且缺少依赖，会自动创建 `.venv` 并安装 `requirements.txt`。
+- 检查界面构建产物是否存在。
+- 启动 LumiMate 主程序。
 
-主要职责：
+开发时可以使用窗口模式：
 
-- 九空间页面与场景切换
-- 背景预加载与双层淡入
-- 侧边导航、底部环境模式、抽屉、模型卡片与聊天输入
-- 运行时环境动效、hover 稳定化和 reduced-motion 支持
-- 开发诊断 HUD，包括 FPS、动画任务、RAF 任务和图层估算指标
+```powershell
+python launcher.py --windowed
+```
 
-### 桥接对象
+也可以只做启动检查：
 
-当前前端通过 QWebChannel 使用的主要对象包括：
+```powershell
+python launcher.py --check
+```
 
-- `appBridge`：场景、背景、设置、项目元数据与环境模式
-- `modelBridge`：模型目录、选择、加载、缓存释放、存储信息
-- `chatBridge`：文本、语音、消息流和聊天状态
-- `emotionBridge`：情绪、呼吸、存在感与倾听状态
-- `companionBridge`：陪伴空间状态与渲染能力
-- `windowBridge`：窗口控制与拖动辅助
-- `shellBridge`：启动交接、boot phase 和前端 ready 信号
+## 首次使用模型
 
-## 目录结构
+LumiMate 会自动扫描本地模型目录：
+
+```text
+models/
+├─ asr_model/
+├─ llm_model/
+└─ tts_model/
+```
+
+如果缺少 ASR 或 LLM，进入 `Workbench` 后可以打开“星系选择”。这里会显示可选模型来源：
+
+- 魔搭社区：更适合中国社区用户。
+- Hugging Face：适合网络条件允许或已有 HF 使用习惯的用户。
+
+下载完成后，LumiMate 会把模型整理到对应目录，并自动重新扫描。TTS 目前保留为本地扫描和占位入口，后续会加入用户自行加载声线模型的流程。
+
+## 推荐使用方式
+
+第一次进入时，可以按这个顺序来：
+
+1. 启动 LumiMate。
+2. 进入 `Workbench`。
+3. 如果提示缺少模型，打开“星系选择”。
+4. 下载或放入 ASR / LLM / TTS 模型。
+5. 点击加载模型，等待 Lumi 苏醒。
+6. 回到 `Chat` 或 `Companion` 开始使用。
+
+如果你只是想先看看界面，不准备立即加载大模型，也可以直接浏览各个空间。
+
+## 运行要求
+
+LumiMate 会自动处理 Python 虚拟环境和依赖安装，但完整模型能力仍然取决于本机环境：
+
+- Windows 桌面环境。
+- 可用的 Python 环境，打包版会尽量隐藏这一层。
+- 足够的磁盘空间用于模型文件。
+- 运行本地模型所需的 CPU / GPU / 显存条件。
+- 可访问魔搭社区或 Hugging Face 的网络环境。
+
+模型体积可能较大，首次下载会比较久，这是正常现象。
+
+## 项目结构
 
 ```text
 LumiMate/
-├─ config/         运行配置、默认值、项目元数据与用户设置
-├─ controllers/    控制器层，负责 UI 与服务之间的调度
-├─ core/           启动、完整性检查、国际化和语音核心能力
-├─ resources/      参考音频、作者头像与界面资源
-├─ services/       模型加载、运行时服务和更新流程
-├─ tools/          本地维护脚本
+├─ launcher.py              启动器，负责环境检测和启动
+├─ main.py                  桌面程序入口
+├─ config/                  应用配置和用户设置
+├─ controllers/             主控制器
+├─ services/                模型、下载、更新和运行服务
+├─ core/                    启动、完整性检查和语音核心逻辑
 ├─ ui/
-│  ├─ assets/      资产清单与资源映射
-│  ├─ bridge/      暴露给 QWebChannel 的 PySide6 桥接对象
-│  ├─ qml/         冻结保留的旧 QML 回退层
-│  └─ web/         Vue 3 WebEngine 前端工程
-├─ 背景图片/        项目现有背景资源
-├─ main.py         应用主入口
-├─ run_lumi.bat    Windows 启动脚本
-├─ requirements.txt Python 依赖列表
-└─ README.md       项目说明文档
+│  ├─ bridge/               Python 与界面之间的桥接层
+│  ├─ web/                  Vue 前端界面
+│  ├─ qml/                  QML 设计系统与备用空间资产
+│  └─ assets/               界面资产清单
+├─ resources/               预览图、参考音频和界面资源
+└─ models/                  本地模型目录，通常不随仓库提交
 ```
 
-## 环境要求
+## 技术说明
 
-建议准备：
+这部分是给开发者看的，普通用户不需要关心。
 
-- Windows 系统
-- `Python 3.10` 或更高版本
-- `Node.js` 与 `npm`
-- 可用的 `pip`
-- 支持 `PySide6 + Qt WebEngine` 的 Python 环境
+LumiMate 当前主要由这些部分组成：
 
-完整语音和本地模型能力还需要准备对应模型、音频资源与推理环境。
+- `Python`：启动器、本地服务、模型加载、语音链路和系统桥接。
+- `PySide6 + Qt WebEngine`：桌面窗口、透明无边框外壳和 Web UI 承载。
+- `QWebChannel`：前端与 Python 后端之间的通信。
+- `Vue 3 + Vite`：主要界面、场景系统、动效和状态组织。
+- `Transformers / Torch / Qwen ASR / Genie TTS`：本地模型与语音能力。
+- `modelscope / huggingface_hub`：模型下载来源。
 
-## 快速开始
+项目重点不是把技术名词堆出来，而是让这些能力最终服务于一个更有情绪和空间感的 AI 陪伴体验。
 
-### 1. 创建虚拟环境
+## 开发者入口
 
-```powershell
-python -m venv .venv
-```
-
-### 2. 安装 Python 依赖
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-### 3. 安装并构建前端
+前端开发：
 
 ```powershell
 cd ui\web
 npm install
-npm run build
-cd ..\..
-```
-
-应用正式启动时默认读取 `ui/web/dist/index.html`，因此首次运行前需要先完成前端构建。
-
-### 4. 启动应用
-
-```bat
-run_lumi.bat
-```
-
-也可以直接运行：
-
-```powershell
-.\.venv\Scripts\python.exe main.py
-```
-
-## 常用命令
-
-```powershell
-# 启动自检
-.\.venv\Scripts\python.exe main.py --check
-
-# 窗口模式启动，适合开发调试
-.\.venv\Scripts\python.exe main.py --windowed
-
-# 前端开发服务器
-cd ui\web
 npm run dev
+```
 
-# 前端生产构建
+构建前端：
+
+```powershell
 cd ui\web
 npm run build
 ```
 
-项目支持通过 `LUMIMATE_WEB_DEV_URL` 加载 Vite 开发服务器：
+使用 Vite 开发服务器启动桌面壳：
 
 ```powershell
 $env:LUMIMATE_WEB_DEV_URL="http://127.0.0.1:5173"
-.\.venv\Scripts\python.exe main.py --windowed
+python launcher.py --windowed
 ```
 
-## 运行资源说明
-
-LumiMate 的完整能力依赖部分本地运行资源，通常包括：
-
-- `models/` 中的 ASR / LLM / TTS 模型资源
-- `GenieData/` 相关语音或推理资源
-- 某些模型栈需要的预编译依赖，例如 `flash_attn`
-- `背景图片/` 中的项目背景图资源
-
-这些大型运行时资源默认不会提交到仓库。新环境运行时，需要自行准备与当前功能匹配的模型和数据文件。
-
-## 常见问题
-
-### 启动时报找不到 PySide6 或 Qt WebEngine
-
-请确认安装依赖时使用的 Python 解释器，与启动应用时使用的是同一个环境：
+跳过启动器环境检查：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py --check
+$env:LUMIMATE_SKIP_BOOTSTRAP="1"
+python main.py --windowed
 ```
 
-### 启动时报找不到前端页面
+## 当前状态
 
-请先生成前端构建产物：
+LumiMate 已经具备完整的桌面启动、空间化界面、模型扫描、模型下载入口和基础 AI 交互框架。后续重点会继续放在：
 
-```powershell
-cd ui\web
-npm install
-npm run build
-cd ..\..
-```
+- 更完善的 TTS 自定义加载流程。
+- 更稳定的模型下载与错误恢复。
+- 更自然的陪伴舞台和角色表现。
+- 更适合发布包的打包与安装体验。
 
-### 语音或模型能力无法正常工作
-
-这通常不是界面层问题，而是本地模型文件、语音资源、推理依赖或显卡环境未准备完整。请优先检查：
-
-- 模型目录是否存在
-- 语音资源是否完整
-- Python 环境是否已安装所有依赖
-- CUDA / 显卡 / 推理环境是否满足所用模型要求
-
-## 开发建议
-
-- 在 `controllers/` 中梳理业务入口和调用链
-- 在 `services/` 中拆分模型、语音、更新等运行时职责
-- 在 `ui/bridge/` 中统一前后端桥接协议
-- 在 `ui/web/src/` 中继续维护场景、组件、动效和状态模块边界
-- 为模型资源、用户配置、日志输出补齐更清晰的文档说明
-
-## 注意事项
-
-- 背景图使用项目内既有资源，不依赖外部下载路径。
-- 前端只通过 QWebChannel 调用底层能力，不直接扫描路径或读写模型文件。
-- 更新清单地址和项目仓库地址是两个不同概念，避免把 GitHub 首页当作自动更新 manifest。
-- 当前仓库未看到明确的开源许可证文件；如果计划公开分发、接受外部贡献或用于商业场景，建议补充 `LICENSE` 文件并明确授权范围。
+LumiMate 的目标不是成为普通工具箱，而是成为一个有呼吸、有情绪、有空间感的 AI Companion System。

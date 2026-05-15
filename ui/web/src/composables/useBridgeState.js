@@ -87,6 +87,55 @@ function normalizeCatalog(value) {
   };
 }
 
+function normalizeComponentStatus(value) {
+  const fallback = {
+    asr: { kind: "asr", label: "听觉节点", ready: false, count: 0, selected: "", selectedName: "", status: "missing", note: "等待下载或导入模型。" },
+    llm: { kind: "llm", label: "思维核心", ready: false, count: 0, selected: "", selectedName: "", status: "missing", note: "等待下载或导入模型。" },
+    tts: { kind: "tts", label: "声线节点", ready: false, count: 0, selected: "", selectedName: "", status: "placeholder", note: "TTS 远程下载暂未开放。" },
+    ready: false,
+    missingRequired: ["asr", "llm"]
+  };
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
+  const normalizeNode = (kind) => ({
+    ...fallback[kind],
+    ...(value[kind] || {}),
+    ready: Boolean(value[kind]?.ready),
+    count: Number(value[kind]?.count || 0),
+    selected: value[kind]?.selected || "",
+    selectedName: value[kind]?.selectedName || "",
+    status: value[kind]?.status || fallback[kind].status,
+    note: value[kind]?.note || fallback[kind].note
+  });
+  return {
+    asr: normalizeNode("asr"),
+    llm: normalizeNode("llm"),
+    tts: normalizeNode("tts"),
+    ready: Boolean(value.ready),
+    missingRequired: normalizeList(value.missingRequired)
+  };
+}
+
+function normalizeDownloadCatalog(value) {
+  const normalizeItem = (item) => ({
+    id: item.id || item.title || "",
+    title: item.title || "未命名模型",
+    subtitle: item.subtitle || "",
+    sizeLabel: item.sizeLabel || "",
+    providers: item.providers && typeof item.providers === "object" ? { ...item.providers } : {},
+    placeholder: Boolean(item.placeholder)
+  });
+  if (!value || typeof value !== "object") {
+    return { asr: [], llm: [], tts: [] };
+  }
+  return {
+    asr: normalizeList(value.asr).map(normalizeItem),
+    llm: normalizeList(value.llm).map(normalizeItem),
+    tts: normalizeList(value.tts).map(normalizeItem)
+  };
+}
+
 function basename(path) {
   if (!path) {
     return "";
@@ -193,7 +242,13 @@ export function useBridgeState() {
       selectedTts: "",
       selectedRefAudio: "",
       selectedRefText: "",
-      selectedTtsCharacter: ""
+      selectedTtsCharacter: "",
+      componentStatus: normalizeComponentStatus(null),
+      downloadCatalog: normalizeDownloadCatalog(null),
+      downloadState: "idle",
+      downloadProgress: 0,
+      downloadMessage: "等待选择模型星系。",
+      downloadLogs: []
     },
     chat: {
       ready: false,
@@ -247,6 +302,9 @@ export function useBridgeState() {
   }
 
   function syncBootState() {
+    if (state.boot.ready) {
+      return;
+    }
     setIfChanged(state.boot, "phase", bridges.shellBridge?.bootPhase || "starting");
     setIfChanged(state.boot, "ready", state.boot.phase === "revealed");
   }
@@ -291,6 +349,12 @@ export function useBridgeState() {
       active: Boolean(step.active)
     }));
     state.runtime.modelCatalog = normalizeCatalog(modelBridge.modelCatalog);
+    state.runtime.componentStatus = normalizeComponentStatus(modelBridge.componentStatus);
+    state.runtime.downloadCatalog = normalizeDownloadCatalog(modelBridge.downloadCatalog);
+    setIfChanged(state.runtime, "downloadState", modelBridge.downloadState || "idle");
+    setIfChanged(state.runtime, "downloadProgress", Number(modelBridge.downloadProgress || 0));
+    setIfChanged(state.runtime, "downloadMessage", hidePaths(modelBridge.downloadMessage || "等待选择模型星系。"));
+    state.runtime.downloadLogs = normalizeList(modelBridge.downloadLogs).map((item) => hidePaths(item)).filter(Boolean);
     state.runtime.storageItems = normalizeList(modelBridge.storageItems).map((item) => ({
       label: STORAGE_LABELS[item.titleKey] || item.titleKey || "\u672c\u5730\u8d44\u6e90",
       valueLabel: item.valueLabel || "0 GB",
@@ -401,6 +465,11 @@ export function useBridgeState() {
     connectSignal(bridges.modelBridge?.selectionChanged, () => scheduleSync("model", syncModelState));
     connectSignal(bridges.modelBridge?.storageChanged, () => scheduleSync("model", syncModelState));
     connectSignal(bridges.modelBridge?.logAdded, () => scheduleSync("model", syncModelState));
+    connectSignal(bridges.modelBridge?.componentStatusChanged, () => scheduleSync("model", syncModelState));
+    connectSignal(bridges.modelBridge?.downloadCatalogChanged, () => scheduleSync("model", syncModelState));
+    connectSignal(bridges.modelBridge?.downloadStateChanged, () => scheduleSync("model", syncModelState));
+    connectSignal(bridges.modelBridge?.downloadProgressChanged, () => scheduleSync("model", syncModelState));
+    connectSignal(bridges.modelBridge?.downloadLogAdded, () => scheduleSync("model", syncModelState));
 
     connectSignal(bridges.chatBridge?.readyChanged, () => scheduleSync("chat", syncChatState));
     connectSignal(bridges.chatBridge?.runningChanged, () => scheduleSync("chat", syncChatState));
@@ -525,6 +594,20 @@ export function useBridgeState() {
     async scanModels() {
       await callQt(bridges.modelBridge, "scanModels");
       return true;
+    },
+    async scanComponents() {
+      await callQt(bridges.modelBridge, "scanComponents");
+      return true;
+    },
+    async openModelGalaxy() {
+      await callQt(bridges.modelBridge, "openModelGalaxy");
+      return true;
+    },
+    async startModelDownload(kind, provider, modelId, displayName) {
+      return Boolean(await callQt(bridges.modelBridge, "startModelDownload", kind, provider, modelId, displayName));
+    },
+    async cancelModelDownload() {
+      return Boolean(await callQt(bridges.modelBridge, "cancelModelDownload"));
     },
     async selectModel(type, path) {
       await callQt(bridges.modelBridge, "selectModel", type, path);

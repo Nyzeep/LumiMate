@@ -14,6 +14,7 @@ class BootstrapResult:
     ok: bool
     restarted: bool = False
     message: str = ""
+    phase: str = "ready"
 
 
 class AppBootstrap:
@@ -40,16 +41,24 @@ class AppBootstrap:
     @staticmethod
     def ensure_environment(project_root: Path) -> BootstrapResult:
         if os.environ.get("LUMIMATE_SKIP_BOOTSTRAP") == "1":
-            return BootstrapResult(True, message="Bootstrap skipped by environment.")
+            return BootstrapResult(True, message="Bootstrap skipped by environment.", phase="ready")
 
         preferred = AppBootstrap.preferred_python(project_root)
+        requirements = project_root / "requirements.txt"
+        current_python = Path(sys.executable)
+        try:
+            if not AppBootstrap._missing_requirements(requirements, current_python):
+                return AppBootstrap._ensure_frontend(project_root)
+        except Exception:
+            pass
+
         try:
             created_venv = False
             if not preferred.exists():
                 venv.EnvBuilder(with_pip=True, clear=False).create(str(AppBootstrap.preferred_venv(project_root)))
                 created_venv = True
         except Exception as exc:
-            return BootstrapResult(False, message=f"Failed to create virtual environment: {exc}")
+            return BootstrapResult(False, message=f"Failed to create virtual environment: {exc}", phase="failed")
 
         try:
             target_python = preferred if preferred.exists() else Path(sys.executable)
@@ -58,23 +67,23 @@ class AppBootstrap:
             if not install_result.ok:
                 return install_result
         except Exception as exc:
-            return BootstrapResult(False, message=f"Failed to validate dependencies: {exc}")
+            return BootstrapResult(False, message=f"Failed to validate dependencies: {exc}", phase="failed")
 
         try:
             current = Path(sys.executable).resolve()
             if preferred.exists() and current != preferred.resolve():
                 os.execv(str(preferred), [str(preferred), str(project_root / "main.py"), *sys.argv[1:]])
-                return BootstrapResult(True, restarted=True)
+                return BootstrapResult(True, restarted=True, message="Restarted with project venv.", phase="ready")
         except Exception as exc:
-            return BootstrapResult(False, message=f"Failed to restart with project venv: {exc}")
+            return BootstrapResult(False, message=f"Failed to restart with project venv: {exc}", phase="failed")
 
-        return BootstrapResult(True, message="Environment ready.")
+        return AppBootstrap._ensure_frontend(project_root)
 
     @staticmethod
     def _ensure_requirements(project_root: Path, python_exe: Path, force_install: bool = False) -> BootstrapResult:
         requirements = project_root / "requirements.txt"
         if not requirements.exists():
-            return BootstrapResult(True, message="No requirements.txt found.")
+            return BootstrapResult(True, message="No requirements.txt found.", phase="ready")
 
         try:
             missing = AppBootstrap._missing_requirements(requirements, python_exe)
@@ -82,7 +91,7 @@ class AppBootstrap:
             missing = ["requirements"]
 
         if not force_install and not missing:
-            return BootstrapResult(True, message="Dependencies ready.")
+            return BootstrapResult(True, message="Dependencies ready.", phase="ready")
 
         try:
             subprocess.run(
@@ -92,12 +101,15 @@ class AppBootstrap:
                 stderr=subprocess.DEVNULL,
                 check=True,
             )
-            return BootstrapResult(True, message="Dependencies installed.")
+            return BootstrapResult(True, message="Dependencies installed.", phase="ready")
         except Exception as exc:
-            return BootstrapResult(False, message=f"Failed to install dependencies: {exc}")
+            return BootstrapResult(False, message=f"Failed to install dependencies: {exc}", phase="failed")
 
     @staticmethod
     def _missing_requirements(requirements: Path, python_exe: Path) -> list[str]:
+        if not requirements.exists():
+            return []
+
         names: list[str] = []
         for raw_line in requirements.read_text(encoding="utf-8").splitlines():
             line = raw_line.strip()
@@ -142,5 +154,22 @@ class AppBootstrap:
             try:
                 importlib.metadata.version(name)
             except importlib.metadata.PackageNotFoundError:
-                missing.append(name)
+                try:
+                    importlib.metadata.version(name.replace("_", "-"))
+                except importlib.metadata.PackageNotFoundError:
+                    missing.append(name)
         return missing
+
+    @staticmethod
+    def _ensure_frontend(project_root: Path) -> BootstrapResult:
+        frontend_entry = project_root / "ui" / "web" / "dist" / "index.html"
+        if not frontend_entry.exists():
+            return BootstrapResult(
+                False,
+                message=(
+                    f"Failed to find built Web frontend: {frontend_entry}\n"
+                    "Run: cd ui\\web && npm install && npm run build"
+                ),
+                phase="failed",
+            )
+        return BootstrapResult(True, message="Environment ready.", phase="ready")

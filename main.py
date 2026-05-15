@@ -10,15 +10,21 @@ WINDOWED_FLAG = "--windowed"
 DEV_URL_ENV = "LUMIMATE_WEB_DEV_URL"
 
 
+def _project_root() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
 def _preferred_python() -> Path:
-    project_root = Path(__file__).resolve().parent
+    project_root = _project_root()
     from core.bootstrap import AppBootstrap
 
     return AppBootstrap.preferred_python(project_root)
 
 
 def main() -> int:
-    project_root = Path(__file__).resolve().parent
+    project_root = _project_root()
     from core.bootstrap import AppBootstrap
 
     bootstrap = AppBootstrap.ensure_environment(project_root)
@@ -210,6 +216,9 @@ def main() -> int:
         overlay_animation.start()
         QTimer.singleShot(460, lambda: shell_bridge.set_phase("revealed"))
 
+    def force_reveal_frontend() -> None:
+        reveal_frontend()
+
     page.loadStarted.connect(lambda: shell_bridge.set_phase("page-loading"))
 
     def on_page_loaded(success: bool) -> None:
@@ -222,7 +231,7 @@ def main() -> int:
     page.loadFinished.connect(on_page_loaded)
     shell_bridge.frontendReadyRequested.connect(reveal_frontend)
     handoff_failsafe.timeout.connect(reveal_frontend)
-    absolute_failsafe.timeout.connect(reveal_frontend)
+    absolute_failsafe.timeout.connect(force_reveal_frontend)
     view.setUrl(frontend_url)
 
     if windowed:
