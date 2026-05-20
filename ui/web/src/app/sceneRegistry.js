@@ -1,3 +1,8 @@
+import background1 from "../../../../背景图片/背景1.png";
+import background2 from "../../../../背景图片/背景2.png";
+import background3 from "../../../../背景图片/背景3.png";
+import background4 from "../../../../背景图片/背景4.png";
+import authorAvatar from "../../../../resources/ui/author_avatar.jpg";
 import AboutScene from "../scenes/AboutScene.vue";
 import ChatScene from "../scenes/ChatScene.vue";
 import CompanionScene from "../scenes/CompanionScene.vue";
@@ -7,6 +12,14 @@ import PersonalityScene from "../scenes/PersonalityScene.vue";
 import SettingsScene from "../scenes/SettingsScene.vue";
 import StorageScene from "../scenes/StorageScene.vue";
 import WorkbenchScene from "../scenes/WorkbenchScene.vue";
+
+export const ASSET_URLS = {
+  background1,
+  background2,
+  background3,
+  background4,
+  authorAvatar
+};
 
 export const ICON_PATHS = {
   home: "M12 5.5 18 16H6Z",
@@ -56,6 +69,7 @@ export const SCENES = [
     titleEn: "Home Space",
     subtitle: "Lumi 正在静静地迎候你",
     iconPath: ICON_PATHS.home,
+    background: background2,
     component: HomeScene
   },
   {
@@ -65,6 +79,7 @@ export const SCENES = [
     titleEn: "Chat Space",
     subtitle: "输入、倾听与回应在同一片空间里低声流动",
     iconPath: ICON_PATHS.chat,
+    background: background3,
     component: ChatScene
   },
   {
@@ -74,6 +89,7 @@ export const SCENES = [
     titleEn: "Companion Space",
     subtitle: "让存在感、情绪与陪伴工具安静地停靠在人物之外",
     iconPath: ICON_PATHS.companion,
+    background: background4,
     component: CompanionScene
   },
   {
@@ -83,6 +99,7 @@ export const SCENES = [
     titleEn: "Workbench",
     subtitle: "模型节点、状态与唤醒路径在这里被组织成有秩序的结构",
     iconPath: ICON_PATHS.workbench,
+    background: background1,
     component: WorkbenchScene
   },
   {
@@ -92,6 +109,7 @@ export const SCENES = [
     titleEn: "Loading Space",
     subtitle: "把核心苏醒过程作为一段可感知的空间反馈来呈现",
     iconPath: ICON_PATHS.loading,
+    background: background1,
     component: LoadingScene
   },
   {
@@ -101,6 +119,7 @@ export const SCENES = [
     titleEn: "Storage",
     subtitle: "在安静的视野里整理容量、缓存与本地资源的关系",
     iconPath: ICON_PATHS.storage,
+    background: background1,
     component: StorageScene
   },
   {
@@ -110,6 +129,7 @@ export const SCENES = [
     titleEn: "Settings",
     subtitle: "把语言、动效与启动习惯收束为克制的系统控制",
     iconPath: ICON_PATHS.settings,
+    background: background3,
     component: SettingsScene
   },
   {
@@ -119,6 +139,7 @@ export const SCENES = [
     titleEn: "Personality",
     subtitle: "整理 Lumi 的回应倾向、呼吸节律与存在密度",
     iconPath: ICON_PATHS.personality,
+    background: background3,
     component: PersonalityScene
   },
   {
@@ -128,10 +149,15 @@ export const SCENES = [
     titleEn: "About Lumi",
     subtitle: "回看当前版本、运行环境与这片空间的起点",
     iconPath: ICON_PATHS.about,
+    background: background1,
     component: AboutScene
   }
 ];
 
 export function getSceneById(sceneId) {
   return SCENES.find((scene) => scene.id === sceneId) || SCENES[0];
+}
+
+export function getSceneBackground(sceneId) {
+  return getSceneById(sceneId).background || background2;
 }

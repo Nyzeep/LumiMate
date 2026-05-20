@@ -329,7 +329,7 @@ async function startDownload(kind, item) {
 
         <div class="span-12 download-console">
           <div class="download-console__bar">
-            <span :style="{ width: `${state.runtime.downloadProgress}%` }"></span>
+            <span :style="{ transform: `scaleX(${downloadProgressRatio})` }"></span>
           </div>
           <div class="download-console__body">
             <strong>{{ state.runtime.downloadMessage }}</strong>

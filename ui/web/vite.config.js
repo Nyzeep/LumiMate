@@ -10,14 +10,14 @@ export default defineConfig({
   plugins: [vue()],
   build: {
     outDir: "dist",
-    emptyOutDir: true,
-    rollupOptions: {
-      input: "index.html"
-    }
+    emptyOutDir: true
   },
   server: {
     host: "127.0.0.1",
     port: 5173,
-    strictPort: false
+    strictPort: false,
+    fs: {
+      allow: [rootDir, fileURLToPath(new URL("../../", import.meta.url))]
+    }
   }
 });

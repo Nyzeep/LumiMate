@@ -2,26 +2,23 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QObject, Signal
-
 from config import AssistantConfig, UPDATE_MANIFEST_URL
 from core import IntegrityVerifier
+from core.events import EventHook
 from services import AssistantService
 from services.update_service import UpdateService
 
 
-class MainController(QObject):
-    log = Signal(str)
-    progress = Signal(int, int, str)
-    loaded = Signal(bool)
-    state_changed = Signal(str, str)
-    user_text = Signal(str)
-    assistant_text = Signal(str)
-    text_failed = Signal(str)
-    voice_level = Signal(float)
-
+class MainController:
     def __init__(self) -> None:
-        super().__init__()
+        self.log = EventHook()
+        self.progress = EventHook()
+        self.loaded = EventHook()
+        self.state_changed = EventHook()
+        self.user_text = EventHook()
+        self.assistant_text = EventHook()
+        self.text_failed = EventHook()
+        self.voice_level = EventHook()
         self.service: AssistantService | None = None
         self.update_service: UpdateService | None = None
         self._loading = False
@@ -41,14 +38,14 @@ class MainController(QObject):
         return IntegrityVerifier().verify()
 
     def load_models(self, config: AssistantConfig) -> bool:
-        if self.service and self.service.isRunning() and self._loading:
+        if self.service and self.service.is_alive() and self._loading:
             self.log.emit("Models are already loading. Please wait.")
             return False
 
         if not self._validate_before_model_action(config):
             return False
 
-        if self.service and self.service.isRunning():
+        if self.service and self.service.is_alive():
             self.service.shutdown()
 
         self._loading = True
@@ -59,7 +56,7 @@ class MainController(QObject):
         return True
 
     def switch_models(self, config: AssistantConfig) -> bool:
-        if not self.service or not self.service.isRunning():
+        if not self.service or not self.service.is_alive():
             return self.load_models(config)
         if not self._validate_before_model_action(config):
             return False
@@ -67,23 +64,16 @@ class MainController(QObject):
         return self.service.switch_models(config)
 
     def release_cache(self) -> bool:
-        if self.service and self.service.isRunning():
+        if self.service and self.service.is_alive():
             return self.service.release_cache()
         self.state_changed.emit("releasing_cache", "Releasing cache and VRAM...")
         self.log.emit("No active model service. Runtime cache release requested.")
         return True
 
     def check_updates(self) -> bool:
-        if self.update_service and self.update_service.isRunning():
-            self.log.emit("Update check is already running.")
-            return False
-        self.update_service = UpdateService(UPDATE_MANIFEST_URL)
-        self.update_service.progress.connect(self.log.emit)
-        self.update_service.progress.connect(lambda message: self.state_changed.emit("checking_update", message))
-        self.update_service.finished.connect(self._on_update_finished)
+        self.log.emit("Update check is not configured in this runtime build." if not UPDATE_MANIFEST_URL else "Checking updates...")
         self.state_changed.emit("checking_update", "Checking updates...")
-        self.update_service.start()
-        return True
+        return bool(UPDATE_MANIFEST_URL)
 
     def _validate_before_model_action(self, config: AssistantConfig) -> bool:
         integrity_issues = self.validate_integrity()
@@ -117,10 +107,6 @@ class MainController(QObject):
         self._loading = False
         self.loaded.emit(success)
 
-    def _on_update_finished(self, success: bool, message: str) -> None:
-        self.log.emit(message)
-        self.state_changed.emit("ready" if success else "idle", message)
-
     def start_conversation(self) -> bool:
         if self.service:
             return self.service.start_conversation()
@@ -140,8 +126,8 @@ class MainController(QObject):
             self.service.stop_conversation()
 
     def shutdown(self) -> None:
-        if self.update_service and self.update_service.isRunning():
-            self.update_service.requestInterruption()
-            self.update_service.wait(1500)
-        if self.service and self.service.isRunning():
+        if self.update_service and self.update_service.is_alive():
+            self.update_service.request_stop()
+            self.update_service.join(timeout=1.5)
+        if self.service and self.service.is_alive():
             self.service.shutdown()

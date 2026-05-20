@@ -3,37 +3,56 @@ from __future__ import annotations
 import threading
 import time
 
-from PySide6.QtCore import QMutex, QMutexLocker, QThread, Signal
-
 from config import AssistantConfig
+from core.events import EventHook
 
 
-class AssistantService(QThread):
-    log = Signal(str)
-    progress = Signal(int, int, str)
-    loaded = Signal(bool)
-    state_changed = Signal(str, str)
-    user_text = Signal(str)
-    assistant_text = Signal(str)
-    text_failed = Signal(str)
-    voice_level = Signal(float)
-
+class AssistantService:
     def __init__(self, config: AssistantConfig):
-        super().__init__()
         self.config = config
         self.assistant = None
         self.is_ready = False
         self.state = "idle"
-        self._mutex = QMutex()
+        self.log = EventHook()
+        self.progress = EventHook()
+        self.loaded = EventHook()
+        self.state_changed = EventHook()
+        self.user_text = EventHook()
+        self.assistant_text = EventHook()
+        self.text_failed = EventHook()
+        self.voice_level = EventHook()
+        self._stop_event = threading.Event()
+        self._lock = threading.RLock()
+        self._thread: threading.Thread | None = None
         self._text_thread: threading.Thread | None = None
         self._maintenance_thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self.is_alive():
+            return
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run, name="LumiAssistantService", daemon=True)
+        self._thread.start()
+
+    def is_alive(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
+    def shutdown(self) -> None:
+        self._stop_event.set()
+        self.stop_conversation()
+        if self._text_thread and self._text_thread.is_alive():
+            self._text_thread.join(timeout=1.0)
+        if self._maintenance_thread and self._maintenance_thread.is_alive():
+            self._maintenance_thread.join(timeout=2.0)
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=3.5)
 
     def set_state(self, state: str, message: str) -> None:
         self.state = state
         self.state_changed.emit(state, message)
         self.log.emit(message)
 
-    def run(self) -> None:
+    def _run(self) -> None:
         from core import VoiceAssistant
 
         try:
@@ -56,8 +75,8 @@ class AssistantService(QThread):
                 self.set_state("failed", "Model loading did not complete. Check the runtime log.")
                 self.loaded.emit(False)
 
-            while not self.isInterruptionRequested():
-                self.msleep(120)
+            while not self._stop_event.is_set():
+                time.sleep(0.12)
         except Exception as exc:
             self.is_ready = False
             self.set_state("failed", f"Model service failed: {exc}")
@@ -80,7 +99,7 @@ class AssistantService(QThread):
         self.state_changed.emit(stage, message)
 
     def start_conversation(self) -> bool:
-        with QMutexLocker(self._mutex):
+        with self._lock:
             if not self.assistant or not self.is_ready:
                 self.log.emit("Models are not ready.")
                 return False
@@ -97,7 +116,7 @@ class AssistantService(QThread):
         if not text:
             return False
 
-        with QMutexLocker(self._mutex):
+        with self._lock:
             if not self.assistant or not self.is_ready:
                 message = "Models are not ready."
                 self.log.emit(message)
@@ -118,13 +137,13 @@ class AssistantService(QThread):
                 self.set_state("failed", message)
                 self.text_failed.emit(message)
 
-        self._text_thread = threading.Thread(target=worker, daemon=True)
+        self._text_thread = threading.Thread(target=worker, name="LumiTextResponse", daemon=True)
         self._text_thread.start()
         return True
 
     def switch_models(self, config: AssistantConfig) -> bool:
-        with QMutexLocker(self._mutex):
-            if not self.assistant or not self.isRunning():
+        with self._lock:
+            if not self.assistant or not self.is_alive():
                 self.log.emit("Start the model service before switching models.")
                 return False
             if self._maintenance_thread and self._maintenance_thread.is_alive():
@@ -150,12 +169,12 @@ class AssistantService(QThread):
                 self.set_state("failed", f"Model switch failed: {exc}")
                 self.loaded.emit(False)
 
-        self._maintenance_thread = threading.Thread(target=worker, daemon=True)
+        self._maintenance_thread = threading.Thread(target=worker, name="LumiModelSwitch", daemon=True)
         self._maintenance_thread.start()
         return True
 
     def release_cache(self) -> bool:
-        with QMutexLocker(self._mutex):
+        with self._lock:
             if self._maintenance_thread and self._maintenance_thread.is_alive():
                 self.log.emit("A maintenance task is already running.")
                 return False
@@ -174,22 +193,13 @@ class AssistantService(QThread):
             except Exception as exc:
                 self.set_state("failed", f"Cache release failed: {exc}")
 
-        self._maintenance_thread = threading.Thread(target=worker, daemon=True)
+        self._maintenance_thread = threading.Thread(target=worker, name="LumiCacheRelease", daemon=True)
         self._maintenance_thread.start()
         return True
 
     def stop_conversation(self) -> None:
-        with QMutexLocker(self._mutex):
+        with self._lock:
             if self.assistant:
                 self.assistant.stop()
                 if self.is_ready:
                     self.state_changed.emit("ready", "Models are ready.")
-
-    def shutdown(self) -> None:
-        self.requestInterruption()
-        self.stop_conversation()
-        if self._text_thread and self._text_thread.is_alive():
-            self._text_thread.join(timeout=1.0)
-        if self._maintenance_thread and self._maintenance_thread.is_alive():
-            self._maintenance_thread.join(timeout=2.0)
-        self.wait(3500)

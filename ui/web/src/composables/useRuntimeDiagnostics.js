@@ -18,6 +18,7 @@ let previousFrameAt = 0;
 let frameCount = 0;
 let sampleStartedAt = 0;
 let nextTaskId = 1;
+let frameId = 0;
 
 function readQueryFlag() {
   if (typeof window === "undefined") {
@@ -62,22 +63,45 @@ function startLoop() {
       sampleDom();
     }
     previousFrameAt = now;
-    window.requestAnimationFrame(tick);
+    frameId = window.requestAnimationFrame(tick);
   };
 
-  window.requestAnimationFrame(tick);
+  frameId = window.requestAnimationFrame(tick);
+}
+
+function stopLoop() {
+  if (!diagnosticsStarted || typeof window === "undefined") {
+    return;
+  }
+  diagnosticsStarted = false;
+  if (frameId) {
+    window.cancelAnimationFrame(frameId);
+    frameId = 0;
+  }
+  previousFrameAt = 0;
+  frameCount = 0;
+  sampleStartedAt = 0;
+  diagnosticsState.fps = 0;
 }
 
 export function useRuntimeDiagnostics() {
-  startLoop();
   const baseVisible = import.meta.env.DEV || readQueryFlag();
 
+  function setVisible(value) {
+    diagnosticsState.visible = Boolean(value);
+    if (diagnosticsState.visible) {
+      startLoop();
+    } else if (!baseVisible) {
+      stopLoop();
+    }
+  }
+
   function syncVisibility(force) {
-    diagnosticsState.visible = Boolean(baseVisible || force);
+    setVisible(baseVisible || force);
   }
 
   function toggleVisible() {
-    diagnosticsState.visible = !diagnosticsState.visible;
+    setVisible(!diagnosticsState.visible);
   }
 
   function setIdle(value) {

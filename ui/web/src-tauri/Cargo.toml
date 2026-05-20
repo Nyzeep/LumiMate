@@ -1,0 +1,16 @@
+[package]
+name = "lumimate"
+version = "0.2.0"
+description = "LumiMate desktop shell"
+authors = ["Nyzeep"]
+license = "MIT"
+repository = "https://github.com/Nyzeep/LumiMate"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }

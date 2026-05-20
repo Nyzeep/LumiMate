@@ -4,8 +4,6 @@
     "background2": "背景图片/背景2.png",
     "background3": "背景图片/背景3.png",
     "background4": "背景图片/背景4.png",
-    "homeStage": "resources/ui/lumi_home_stage.png",
-    "companionPortrait": "resources/ui/lumi_companion_portrait.png",
     "atmosphereTexture": "resources/ui/lumi_atmosphere_texture.png",
     "authorAvatar": "resources/ui/author_avatar.jpg",
     "referenceAudio": "resources/zh_vo_Main_Linaxita_2_1_10_26.wav"

@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from "vue";
-import { callQt } from "../webChannel";
-import { getSceneById, SCENES, SCENE_GROUPS } from "../app/sceneRegistry";
+import { getSceneBackground, getSceneById, SCENES, SCENE_GROUPS } from "../app/sceneRegistry";
+import { runtimeCommand } from "../runtimeClient";
 
 const NAVIGATION_THROTTLE_MS = 240;
 const TRANSITION_LOCK_MS = 360;
@@ -18,10 +18,11 @@ function preloadImage(url) {
   });
 }
 
-export function useSceneNavigation(state, bridges) {
+export function useSceneNavigation(state) {
   const backgroundCache = reactive({});
   const preloadCache = reactive({});
-  const backgroundLayers = ref(["/bg.jpg", "/bg.jpg"]);
+  const homeBackground = getSceneBackground("home");
+  const backgroundLayers = ref([homeBackground, homeBackground]);
   const activeBackgroundLayer = ref(0);
   const isTransitioning = ref(false);
 
@@ -36,17 +37,15 @@ export function useSceneNavigation(state, bridges) {
     return state.app.currentScene === sceneId;
   }
 
-  async function resolveSceneBackground(sceneId) {
-    if (backgroundCache[sceneId]) {
-      return backgroundCache[sceneId];
+  function resolveSceneBackground(sceneId) {
+    if (!backgroundCache[sceneId]) {
+      backgroundCache[sceneId] = getSceneBackground(sceneId);
     }
-    const url = await callQt(bridges.appBridge, "sceneBackgroundUrl", sceneId);
-    backgroundCache[sceneId] = url || "/bg.jpg";
     return backgroundCache[sceneId];
   }
 
   async function prepareSceneBackground(sceneId) {
-    const url = await resolveSceneBackground(sceneId);
+    const url = resolveSceneBackground(sceneId);
     if (!preloadCache[url]) {
       preloadCache[url] = preloadImage(url);
     }
@@ -67,12 +66,7 @@ export function useSceneNavigation(state, bridges) {
     backgroundToken = token;
 
     const url = await prepareSceneBackground(sceneId);
-
-    if (backgroundToken !== token) {
-      return;
-    }
-
-    if (backgroundLayers.value[activeBackgroundLayer.value] === url) {
+    if (backgroundToken !== token || backgroundLayers.value[activeBackgroundLayer.value] === url) {
       return;
     }
 
@@ -112,7 +106,7 @@ export function useSceneNavigation(state, bridges) {
     state.app.currentSceneGroup = scene.group;
 
     await swapSceneBackground(scene.id);
-    await callQt(bridges.appBridge, "navigate", scene.id);
+    await runtimeCommand("/api/app/navigate", { scene: scene.id });
     return true;
   }
 
@@ -129,7 +123,7 @@ export function useSceneNavigation(state, bridges) {
     state.app.currentScene = targetScene.id;
 
     await swapSceneBackground(targetScene.id);
-    await callQt(bridges.appBridge, "setSceneGroup", normalizedGroup);
+    await runtimeCommand("/api/app/scene-group", { groupIndex: normalizedGroup });
     return true;
   }
 

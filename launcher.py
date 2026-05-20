@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import os
+import argparse
 import importlib.metadata
+import os
+import shutil
 import subprocess
 import sys
 import venv
@@ -15,8 +17,17 @@ def _project_root() -> Path:
 
 
 PROJECT_ROOT = _project_root()
-QUIET = "--verbose-bootstrap" not in sys.argv
 BOOTSTRAP_MARKER = "LUMIMATE_BOOTSTRAPPED"
+
+
+def _ensure_rust_path() -> None:
+    cargo_bin = Path.home() / ".cargo" / "bin"
+    if not cargo_bin.exists():
+        return
+    cargo_bin_text = str(cargo_bin)
+    paths = os.environ.get("PATH", "").split(os.pathsep)
+    if not any(Path(item).resolve() == cargo_bin.resolve() for item in paths if item):
+        os.environ["PATH"] = cargo_bin_text + os.pathsep + os.environ.get("PATH", "")
 
 
 def _venv_python() -> Path:
@@ -25,23 +36,15 @@ def _venv_python() -> Path:
     return PROJECT_ROOT / ".venv" / "bin" / "python"
 
 
-def _is_usable_python(python_exe: Path) -> bool:
-    return python_exe.exists() and not _missing_requirements(PROJECT_ROOT / "requirements.txt", python_exe)
-
-
-def _current_python_is_usable() -> bool:
-    if os.environ.get(BOOTSTRAP_MARKER) == "1":
-        return True
-    requirements = PROJECT_ROOT / "requirements.txt"
-    return not requirements.exists() or not _missing_requirements(requirements, Path(sys.executable))
-
-
 def _resolve_python() -> Path:
-    if _current_python_is_usable():
+    requirements = PROJECT_ROOT / "requirements.txt"
+    if os.environ.get(BOOTSTRAP_MARKER) == "1":
+        return Path(sys.executable)
+    if not requirements.exists() or not _missing_requirements(requirements, Path(sys.executable)):
         return Path(sys.executable)
 
     project_venv = _venv_python()
-    if _is_usable_python(project_venv):
+    if project_venv.exists() and not _missing_requirements(requirements, project_venv):
         return project_venv
 
     return _ensure_venv()
@@ -51,8 +54,7 @@ def _ensure_venv() -> Path:
     python_exe = _venv_python()
     if python_exe.exists():
         return python_exe
-
-    _notice("LumiMate: creating local Python environment...")
+    print("LumiMate: creating local Python environment...")
     venv.EnvBuilder(with_pip=True, clear=False).create(str(PROJECT_ROOT / ".venv"))
     if not python_exe.exists():
         raise RuntimeError("Virtual environment was created, but its Python executable was not found.")
@@ -66,12 +68,10 @@ def _install_requirements(python_exe: Path) -> None:
     missing = _missing_requirements(requirements, python_exe)
     if not missing:
         return
-    _notice("LumiMate: preparing dependencies. This may take a while on first launch...")
+    print("LumiMate: preparing Python runtime dependencies...")
     subprocess.run(
         [str(python_exe), "-m", "pip", "install", "-r", str(requirements)],
         cwd=str(PROJECT_ROOT),
-        stdout=None if not QUIET else subprocess.DEVNULL,
-        stderr=None if not QUIET else subprocess.DEVNULL,
         check=True,
     )
 
@@ -88,6 +88,8 @@ def _missing_requirements(requirements: Path, python_exe: Path) -> list[str]:
             if marker in name:
                 name = name.split(marker, 1)[0].strip()
                 break
+        if "[" in name:
+            name = name.split("[", 1)[0].strip()
         if name:
             names.append(name)
 
@@ -128,30 +130,77 @@ def _missing_requirements(requirements: Path, python_exe: Path) -> list[str]:
     return missing
 
 
-def _check_frontend() -> None:
-    frontend = PROJECT_ROOT / "ui" / "web" / "dist" / "index.html"
-    if frontend.exists():
-        return
-    raise RuntimeError(
-        "The Web frontend has not been built yet. Run `cd ui\\web && npm install && npm run build` before launching LumiMate."
-    )
+def _check_project_files() -> None:
+    required = [
+        PROJECT_ROOT / "runtime" / "server.py",
+        PROJECT_ROOT / "ui" / "web" / "src" / "app" / "AppShell.vue",
+        PROJECT_ROOT / "ui" / "web" / "src-tauri" / "tauri.conf.json",
+        PROJECT_ROOT / "背景图片" / "背景1.png",
+        PROJECT_ROOT / "背景图片" / "背景2.png",
+        PROJECT_ROOT / "背景图片" / "背景3.png",
+        PROJECT_ROOT / "背景图片" / "背景4.png",
+    ]
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise RuntimeError("Missing required LumiMate files:\n" + "\n".join(missing))
 
 
-def _notice(message: str) -> None:
-    if not QUIET:
-        print(message)
+def _run_runtime(python_exe: Path, args: list[str]) -> int:
+    os.environ[BOOTSTRAP_MARKER] = "1"
+    if python_exe.resolve() == Path(sys.executable).resolve():
+        from runtime.server import main as runtime_main
+
+        return runtime_main(args)
+    command = [str(python_exe), "-m", "runtime.server", *args]
+    return subprocess.call(command, cwd=str(PROJECT_ROOT), env={**os.environ, BOOTSTRAP_MARKER: "1"})
 
 
-def main() -> int:
+def _run_desktop() -> int:
+    _ensure_rust_path()
+    frontend = PROJECT_ROOT / "ui" / "web"
+    if not (frontend / "src-tauri" / "tauri.conf.json").exists():
+        print("LumiMate desktop shell is missing. Run `python launcher.py --api` to start the backend only.")
+        return 1
+
+    if not shutil.which("cargo"):
+        print(
+            "LumiMate now uses Tauri as the desktop shell.\n"
+            "Rust/Cargo is not installed, so the native UI cannot be started from `python launcher.py` yet.\n\n"
+            "Install Rust from https://rustup.rs, then run:\n"
+            "  cd ui\\web\n"
+            "  npm run tauri:dev\n\n"
+            "Backend-only mode is still available with:\n"
+            "  python launcher.py --api"
+        )
+        return 1
+
+    return subprocess.call(["npm", "run", "tauri:dev"], cwd=str(frontend))
+
+
+def main(argv: list[str] | None = None) -> int:
+    _ensure_rust_path()
+    parser = argparse.ArgumentParser(description="LumiMate launcher")
+    parser.add_argument("--api", action="store_true", help="Start the Python FastAPI runtime.")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args(argv)
+
     try:
         python_exe = _resolve_python()
         _install_requirements(python_exe)
-        _check_frontend()
-        os.environ["LUMIMATE_SKIP_BOOTSTRAP"] = "1"
-        os.environ[BOOTSTRAP_MARKER] = "1"
-        args = [arg for arg in sys.argv[1:] if arg != "--verbose-bootstrap"]
-        command = [str(python_exe), str(PROJECT_ROOT / "main.py"), *args]
-        return subprocess.call(command, cwd=str(PROJECT_ROOT))
+        _check_project_files()
+        if not args.api and not args.check:
+            return _run_desktop()
+        runtime_args: list[str] = []
+        if args.check:
+            runtime_args.append("--check")
+        if args.api or not args.check:
+            runtime_args.extend(["--host", args.host, "--port", str(args.port)])
+        result = _run_runtime(python_exe, runtime_args)
+        if args.check and result == 0:
+            print("LumiMate launcher check passed.")
+        return result
     except Exception as exc:
         print(f"LumiMate launcher failed: {exc}")
         return 1

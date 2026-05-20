@@ -289,7 +289,6 @@ onMounted(async () => {
       <header class="shell-header">
         <div
           class="shell-drag-region"
-          :class="{ 'is-draggable': !state.window.isFullscreen }"
           data-promoted-layer="true"
           @pointerdown="beginWindowDrag"
           @pointermove="dragWindow"

@@ -6,22 +6,21 @@ from config import ProjectPaths
 
 
 DEFAULT_CORE_FILES = [
+    "launcher.py",
     "main.py",
     "config/app_config.py",
     "core/bootstrap.py",
+    "core/events.py",
     "core/integrity.py",
     "core/i18n.py",
     "controllers/main_controller.py",
+    "runtime/server.py",
     "services/assistant_service.py",
     "services/model_manager.py",
+    "services/model_download_service.py",
     "services/update_service.py",
     "core/voice_assistant.py",
-    "ui/bridge/app_bridge.py",
-    "ui/bridge/model_bridge.py",
-    "ui/bridge/chat_bridge.py",
-    "ui/bridge/emotion_bridge.py",
-    "ui/bridge/companion_bridge.py",
-    "ui/qml/main.qml",
+    "ui/web/src/app/AppShell.vue",
 ]
 
 

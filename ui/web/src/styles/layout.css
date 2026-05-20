@@ -35,7 +35,7 @@
   background-size: cover;
   background-repeat: no-repeat;
   opacity: 0;
-  transition: opacity var(--duration-md) var(--ease-standard);
+  transition: opacity var(--duration-lg) var(--ease-standard);
   will-change: opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -137,6 +137,10 @@
   gap: 10px;
 }
 
+.app-shell.is-windowed .shell-header__actions {
+  display: none;
+}
+
 .shell-side-controls {
   position: absolute;
   top: 118px;
@@ -162,9 +166,11 @@
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--duration-sm) var(--ease-standard);
-  will-change: opacity;
-  transform: translateZ(0);
+  transition:
+    opacity var(--duration-md) var(--ease-standard),
+    transform var(--duration-md) var(--ease-standard);
+  will-change: opacity, transform;
+  transform: translate3d(0, 12px, 0) scale(0.992);
   backface-visibility: hidden;
   contain: paint;
 }
@@ -172,6 +178,7 @@
 .scene-panel.is-active {
   opacity: 1;
   pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .scene-ambient {

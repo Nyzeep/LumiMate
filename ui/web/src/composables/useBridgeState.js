@@ -1,35 +1,44 @@
 import { computed, reactive } from "vue";
-import { callQt, connectSignal, createBridgeObjects } from "../webChannel";
+import { ASSET_URLS } from "../app/sceneRegistry";
+import {
+  closeWindow,
+  connectRuntimeEvents,
+  getRuntimeState,
+  minimizeWindow,
+  runtimeCommand,
+  shutdownBackend,
+  toggleWindowMode
+} from "../runtimeClient";
 
 const STATUS_LABELS = {
-  idle: "\u9759\u7f6e",
-  validating: "\u6821\u51c6",
-  loading_asr: "\u542c\u89c9\u5524\u9192",
-  loading_llm: "\u601d\u7ef4\u7ec7\u5165",
-  loading_tts: "\u58f0\u7ebf\u70b9\u4eae",
-  ready: "\u5e73\u9759",
-  listening: "\u503e\u542c",
-  thinking: "\u601d\u7d22",
-  replying: "\u56de\u5e94",
-  switching: "\u5207\u6362",
-  releasing_cache: "\u91ca\u653e\u7f13\u5b58",
-  checking_update: "\u68c0\u67e5\u66f4\u65b0",
-  failed: "\u5fae\u6697"
+  idle: "静置",
+  validating: "校准",
+  loading_asr: "听觉唤醒",
+  loading_llm: "思维织入",
+  loading_tts: "声线点亮",
+  ready: "平静",
+  listening: "倾听",
+  thinking: "思索",
+  replying: "回应",
+  switching: "切换",
+  releasing_cache: "释放缓存",
+  checking_update: "检查更新",
+  failed: "微暗"
 };
 
 const STEP_LABELS = {
-  "loading.step.asr": "\u8bfb\u53d6\u542c\u89c9\u8282\u70b9",
-  "loading.step.llm": "\u6821\u51c6\u601d\u7ef4\u6838\u5fc3",
-  "loading.step.tts": "\u70b9\u4eae\u58f0\u7ebf\u7f51\u7edc",
-  "loading.step.reference": "\u5bf9\u9f50\u8bb0\u5fc6\u6837\u672c"
+  "loading.step.asr": "读取听觉节点",
+  "loading.step.llm": "校准思维核心",
+  "loading.step.tts": "点亮声线网络",
+  "loading.step.reference": "对齐记忆样本"
 };
 
 const STORAGE_LABELS = {
-  "storage.bucket.asr": "\u542c\u89c9\u6a21\u578b\u5c42",
-  "storage.bucket.llm": "\u601d\u7ef4\u6838\u5fc3\u5c42",
-  "storage.bucket.tts": "\u58f0\u7ebf\u6a21\u578b\u5c42",
-  "storage.bucket.genie": "\u5bf9\u8bdd\u8bb0\u5fc6\u5c42",
-  "storage.bucket.flash": "\u7f13\u5b58\u9884\u7f16\u8bd1\u5c42"
+  "storage.bucket.asr": "听觉模型层",
+  "storage.bucket.llm": "思维核心层",
+  "storage.bucket.tts": "声线模型层",
+  "storage.bucket.genie": "对话记忆层",
+  "storage.bucket.flash": "缓存预编译层"
 };
 
 const BOOT_PHASE_COPY = {
@@ -43,19 +52,19 @@ const BOOT_PHASE_COPY = {
 };
 
 const MOOD_LABELS = {
-  quiet: "\u9759\u7f6e",
-  present: "\u5728\u573a",
-  awakening: "\u82cf\u9192",
-  listening: "\u503e\u542c",
-  thinking: "\u601d\u7d22",
-  replying: "\u56de\u5e94",
-  dim: "\u5fae\u6697"
+  quiet: "静置",
+  present: "在场",
+  awakening: "苏醒",
+  listening: "倾听",
+  thinking: "思索",
+  replying: "回应",
+  dim: "微暗"
 };
 
 const AMBIENT_MODE_LABELS = {
-  quiet: "\u9759\u8c27",
-  breath: "\u547c\u5438",
-  stream: "\u661f\u6d41"
+  quiet: "静谧",
+  breath: "呼吸",
+  stream: "星流"
 };
 
 function normalizeList(value) {
@@ -70,7 +79,7 @@ function normalizeCatalog(value) {
   const normalizeEntries = (entries) =>
     normalizeList(entries).map((entry) => ({
       id: entry.id || "",
-      title: entry.title || "\u672a\u547d\u540d\u8282\u70b9",
+      title: entry.title || "未命名节点",
       subtitle: entry.subtitle || "",
       tags: normalizeList(entry.tags),
       status: entry.status || "idle",
@@ -145,8 +154,8 @@ function basename(path) {
 
 function hidePaths(value) {
   return String(value || "")
-    .replace(/[A-Za-z]:[\\/][^\s,;:]+/g, "\u672c\u5730\u8282\u70b9")
-    .replace(/\/[^\s,;:]+\/[^\s,;:]+/g, "\u672c\u5730\u8282\u70b9");
+    .replace(/[A-Za-z]:[\\/][^\s,;:]+/g, "本地节点")
+    .replace(/\/[^\s,;:]+\/[^\s,;:]+/g, "本地节点");
 }
 
 function setIfChanged(target, key, value) {
@@ -174,24 +183,30 @@ function normalizeMessages(items) {
 function softMessage(status) {
   const text = hidePaths(status).trim();
   if (!text) {
-    return "\u7531\u5f53\u524d\u8fd0\u884c\u72b6\u6001\u9a71\u52a8\u7684\u7a7a\u95f4\u4eae\u5ea6\u4e0e\u56de\u5e94\u610f\u613f\u3002";
+    return "由当前运行状态驱动的空间亮度与回应意愿。";
   }
   if (/load models|wake lumi/i.test(text)) {
-    return "\u6838\u5fc3\u4ecd\u5728\u9759\u7f6e\uff0c\u7b49\u5f85\u88ab\u5524\u9192\u3002";
+    return "核心仍在静置，等待被唤醒。";
   }
   if (/listening/i.test(text)) {
-    return "Lumi \u6b63\u5728\u503e\u542c\u3002";
+    return "Lumi 正在倾听。";
   }
   if (/ready/i.test(text)) {
-    return "Lumi \u5df2\u7ecf\u5728\u8fd9\u91cc\u3002";
+    return "Lumi 已经在这里。";
   }
   if (/quiet/i.test(text)) {
-    return "\u7a7a\u95f4\u56de\u5230\u5b89\u9759\u3002";
+    return "空间回到安静。";
   }
   if (/response|shaping|thinking/i.test(text)) {
-    return "\u56de\u5e94\u6b63\u5728\u6210\u5f62\u3002";
+    return "回应正在成形。";
   }
   return text;
+}
+
+function assignScalar(target, key, value) {
+  if (value !== undefined) {
+    setIfChanged(target, key, value);
+  }
 }
 
 export function useBridgeState() {
@@ -210,9 +225,9 @@ export function useBridgeState() {
       checkUpdateOnStartup: false,
       ambientMode: "quiet",
       appVersion: "",
-      appAuthor: "",
-      projectUrl: "",
-      authorAvatarUrl: "",
+      appAuthor: "Nyzeep",
+      projectUrl: "https://github.com/Nyzeep/LumiMate",
+      authorAvatarUrl: ASSET_URLS.authorAvatar,
       updateSource: "",
       projectRoot: "",
       pythonExecutable: ""
@@ -224,10 +239,10 @@ export function useBridgeState() {
     },
     runtime: {
       state: "idle",
-      message: "Lumi \u6b63\u5728\u9759\u9759\u5730\u8fce\u5019\u4f60",
+      message: "Lumi 正在静静地迎候你",
       progressStep: 0,
       progressTotal: 0,
-      progressMessage: "\u9759\u7f6e",
+      progressMessage: "静置",
       loaded: false,
       logs: [],
       loadingSteps: [],
@@ -253,7 +268,7 @@ export function useBridgeState() {
     chat: {
       ready: false,
       running: false,
-      status: "\u7531\u5f53\u524d\u8fd0\u884c\u72b6\u6001\u9a71\u52a8\u7684\u7a7a\u95f4\u4eae\u5ea6\u4e0e\u56de\u5e94\u610f\u613f\u3002",
+      status: "由当前运行状态驱动的空间亮度与回应意愿。",
       phase: "idle",
       voiceLevel: 0,
       messages: []
@@ -268,234 +283,128 @@ export function useBridgeState() {
       stageMode: "presence",
       speechLevel: 0,
       rendererType: "Portrait Stage",
-      rendererCapability: "\u9759\u6001\u8096\u50cf\u3001\u5fae\u5149\u547c\u5438\u4e0e\u58f0\u6ce2\u8109\u51b2"
+      rendererCapability: "静态肖像、微光呼吸与声波脉冲"
     },
     window: {
-      isFullscreen: true
+      isFullscreen: false
     }
   });
 
-  const bridges = reactive({
-    appBridge: null,
-    modelBridge: null,
-    chatBridge: null,
-    emotionBridge: null,
-    companionBridge: null,
-    shellBridge: null,
-    windowBridge: null
-  });
+  const bridges = reactive({});
 
-  const scheduledSyncs = new Map();
-  let frameToken = 0;
-
-  function scheduleSync(key, task) {
-    scheduledSyncs.set(key, task);
-    if (frameToken) {
-      return;
-    }
-    frameToken = window.requestAnimationFrame(() => {
-      const tasks = [...scheduledSyncs.values()];
-      scheduledSyncs.clear();
-      frameToken = 0;
-      tasks.forEach((item) => item());
-    });
-  }
-
-  function syncBootState() {
-    if (state.boot.ready) {
-      return;
-    }
-    setIfChanged(state.boot, "phase", bridges.shellBridge?.bootPhase || "starting");
-    setIfChanged(state.boot, "ready", state.boot.phase === "revealed");
-  }
-
-  function syncAppState() {
-    const appBridge = bridges.appBridge;
-    if (!appBridge) {
-      return;
-    }
-    setIfChanged(state.app, "currentScene", appBridge.currentPage || "home");
-    setIfChanged(state.app, "currentSceneGroup", Number(appBridge.currentSceneGroupIndex ?? 0));
-    setIfChanged(state.app, "language", appBridge.language || "zh-CN");
-    setIfChanged(state.app, "startupPage", appBridge.startupPage || "home");
-    setIfChanged(state.app, "reduceMotion", Boolean(appBridge.reduceMotion));
-    setIfChanged(state.app, "checkUpdateOnStartup", Boolean(appBridge.checkUpdateOnStartup));
-    setIfChanged(state.app, "ambientMode", appBridge.ambientMode || "quiet");
-    setIfChanged(state.app, "appVersion", appBridge.appVersion || "");
-    setIfChanged(state.app, "appAuthor", appBridge.appAuthor || "");
-    setIfChanged(state.app, "projectUrl", appBridge.projectUrl || "");
-    setIfChanged(state.app, "authorAvatarUrl", appBridge.authorAvatarUrl || "");
-    setIfChanged(state.app, "updateSource", appBridge.updateSource || "");
-    setIfChanged(state.app, "projectRoot", appBridge.projectRoot || "");
-    setIfChanged(state.app, "pythonExecutable", appBridge.pythonExecutable || "");
-  }
-
-  function syncModelState() {
-    const modelBridge = bridges.modelBridge;
-    if (!modelBridge) {
+  function applySnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") {
       return;
     }
 
-    setIfChanged(state.runtime, "state", modelBridge.state || "idle");
-    setIfChanged(state.runtime, "message", softMessage(modelBridge.stateMessage || "Lumi \u6b63\u5728\u9759\u9759\u5730\u8fce\u5019\u4f60"));
-    setIfChanged(state.runtime, "progressStep", Number(modelBridge.progressStep || 0));
-    setIfChanged(state.runtime, "progressTotal", Number(modelBridge.progressTotal || 0));
-    setIfChanged(state.runtime, "progressMessage", softMessage(modelBridge.progressMessage || modelBridge.stateMessage));
-    setIfChanged(state.runtime, "loaded", Boolean(modelBridge.loaded));
-    state.runtime.logs = normalizeList(modelBridge.runtimeLog).map((item) => hidePaths(item));
-    state.runtime.loadingSteps = normalizeList(modelBridge.loadingSteps).map((step) => ({
-      label: STEP_LABELS[step.labelKey] || step.labelKey || "\u661f\u7ebf\u6821\u51c6",
+    const boot = snapshot.boot || {};
+    assignScalar(state.boot, "bridgeReady", Boolean(boot.bridgeReady ?? state.boot.bridgeReady));
+    assignScalar(state.boot, "phase", boot.phase || state.boot.phase);
+    assignScalar(state.boot, "ready", Boolean(boot.ready ?? state.boot.ready));
+
+    const app = snapshot.app || {};
+    assignScalar(state.app, "currentScene", app.currentScene);
+    assignScalar(state.app, "currentSceneGroup", Number(app.currentSceneGroup ?? state.app.currentSceneGroup));
+    assignScalar(state.app, "language", app.language);
+    assignScalar(state.app, "startupPage", app.startupPage);
+    assignScalar(state.app, "reduceMotion", Boolean(app.reduceMotion ?? state.app.reduceMotion));
+    assignScalar(state.app, "checkUpdateOnStartup", Boolean(app.checkUpdateOnStartup ?? state.app.checkUpdateOnStartup));
+    assignScalar(state.app, "ambientMode", app.ambientMode);
+    assignScalar(state.app, "appVersion", app.appVersion);
+    assignScalar(state.app, "appAuthor", app.appAuthor || "Nyzeep");
+    assignScalar(state.app, "projectUrl", app.projectUrl || "https://github.com/Nyzeep/LumiMate");
+    assignScalar(state.app, "authorAvatarUrl", app.authorAvatarUrl || ASSET_URLS.authorAvatar);
+    assignScalar(state.app, "updateSource", app.updateSource);
+    assignScalar(state.app, "projectRoot", app.projectRoot);
+    assignScalar(state.app, "pythonExecutable", app.pythonExecutable);
+
+    const runtime = snapshot.runtime || {};
+    assignScalar(state.runtime, "state", runtime.state);
+    assignScalar(state.runtime, "message", softMessage(runtime.message));
+    assignScalar(state.runtime, "progressStep", Number(runtime.progressStep || 0));
+    assignScalar(state.runtime, "progressTotal", Number(runtime.progressTotal || 0));
+    assignScalar(state.runtime, "progressMessage", softMessage(runtime.progressMessage || runtime.message));
+    assignScalar(state.runtime, "loaded", Boolean(runtime.loaded ?? state.runtime.loaded));
+    state.runtime.logs = normalizeList(runtime.logs).map((item) => hidePaths(item));
+    state.runtime.loadingSteps = normalizeList(runtime.loadingSteps).map((step) => ({
+      label: STEP_LABELS[step.labelKey] || step.labelKey || "星线校准",
       done: Boolean(step.done),
       active: Boolean(step.active)
     }));
-    state.runtime.modelCatalog = normalizeCatalog(modelBridge.modelCatalog);
-    state.runtime.componentStatus = normalizeComponentStatus(modelBridge.componentStatus);
-    state.runtime.downloadCatalog = normalizeDownloadCatalog(modelBridge.downloadCatalog);
-    setIfChanged(state.runtime, "downloadState", modelBridge.downloadState || "idle");
-    setIfChanged(state.runtime, "downloadProgress", Number(modelBridge.downloadProgress || 0));
-    setIfChanged(state.runtime, "downloadMessage", hidePaths(modelBridge.downloadMessage || "等待选择模型星系。"));
-    state.runtime.downloadLogs = normalizeList(modelBridge.downloadLogs).map((item) => hidePaths(item)).filter(Boolean);
-    state.runtime.storageItems = normalizeList(modelBridge.storageItems).map((item) => ({
-      label: STORAGE_LABELS[item.titleKey] || item.titleKey || "\u672c\u5730\u8d44\u6e90",
+    state.runtime.modelCatalog = normalizeCatalog(runtime.modelCatalog);
+    state.runtime.componentStatus = normalizeComponentStatus(runtime.componentStatus);
+    state.runtime.downloadCatalog = normalizeDownloadCatalog(runtime.downloadCatalog);
+    assignScalar(state.runtime, "downloadState", runtime.downloadState);
+    assignScalar(state.runtime, "downloadProgress", Number(runtime.downloadProgress || 0));
+    assignScalar(state.runtime, "downloadMessage", hidePaths(runtime.downloadMessage || "等待选择模型星系。"));
+    state.runtime.downloadLogs = normalizeList(runtime.downloadLogs).map((item) => hidePaths(item)).filter(Boolean);
+    state.runtime.storageItems = normalizeList(runtime.storageItems).map((item) => ({
+      label: STORAGE_LABELS[item.titleKey] || item.titleKey || "本地资源",
       valueLabel: item.valueLabel || "0 GB",
       titleKey: item.titleKey || "",
       path: item.path || ""
     }));
+    assignScalar(state.runtime, "storageUsedLabel", runtime.storageUsedLabel || "0 GB");
+    assignScalar(state.runtime, "storageTotalLabel", runtime.storageTotalLabel || "0 GB");
+    assignScalar(state.runtime, "storageFreeLabel", runtime.storageFreeLabel || "0 GB");
+    assignScalar(state.runtime, "storageUsageRatio", Number(runtime.storageUsageRatio || 0));
+    assignScalar(state.runtime, "selectedAsr", runtime.selectedAsr || "");
+    assignScalar(state.runtime, "selectedLlm", runtime.selectedLlm || "");
+    assignScalar(state.runtime, "selectedTts", runtime.selectedTts || "");
+    assignScalar(state.runtime, "selectedRefAudio", runtime.selectedRefAudio || "");
+    assignScalar(state.runtime, "selectedRefText", runtime.selectedRefText || "");
+    assignScalar(state.runtime, "selectedTtsCharacter", runtime.selectedTtsCharacter || "");
 
-    setIfChanged(state.runtime, "storageUsedLabel", modelBridge.storageUsedLabel || "0 GB");
-    setIfChanged(state.runtime, "storageTotalLabel", modelBridge.storageTotalLabel || "0 GB");
-    setIfChanged(state.runtime, "storageFreeLabel", modelBridge.storageFreeLabel || "0 GB");
-    setIfChanged(state.runtime, "storageUsageRatio", Number(modelBridge.storageUsageRatio || 0));
-    setIfChanged(state.runtime, "selectedAsr", modelBridge.selectedAsr || "");
-    setIfChanged(state.runtime, "selectedLlm", modelBridge.selectedLlm || "");
-    setIfChanged(state.runtime, "selectedTts", modelBridge.selectedTts || "");
-    setIfChanged(state.runtime, "selectedRefAudio", modelBridge.selectedRefAudio || "");
-    setIfChanged(state.runtime, "selectedRefText", modelBridge.selectedRefText || "");
-    setIfChanged(state.runtime, "selectedTtsCharacter", modelBridge.selectedTtsCharacter || "");
-  }
+    const chat = snapshot.chat || {};
+    assignScalar(state.chat, "ready", Boolean(chat.ready ?? state.chat.ready));
+    assignScalar(state.chat, "running", Boolean(chat.running ?? state.chat.running));
+    assignScalar(state.chat, "status", softMessage(chat.status));
+    assignScalar(state.chat, "phase", chat.phase || "idle");
+    assignScalar(state.chat, "voiceLevel", clamp01(chat.voiceLevel));
+    state.chat.messages = normalizeMessages(chat.messages);
 
-  function syncChatState() {
-    const chatBridge = bridges.chatBridge;
-    if (!chatBridge) {
-      return;
-    }
-    setIfChanged(state.chat, "ready", Boolean(chatBridge.ready));
-    setIfChanged(state.chat, "running", Boolean(chatBridge.running));
-    setIfChanged(state.chat, "status", softMessage(chatBridge.status));
-    setIfChanged(state.chat, "phase", chatBridge.phase || "idle");
-    setIfChanged(state.chat, "voiceLevel", clamp01(chatBridge.voiceLevel));
-    state.chat.messages = normalizeMessages(chatBridge.messages);
-  }
+    const emotion = snapshot.emotion || {};
+    assignScalar(state.emotion, "mood", emotion.mood || "quiet");
+    assignScalar(state.emotion, "breathLevel", clamp01(emotion.breathLevel || 0.52));
+    assignScalar(state.emotion, "presenceLevel", clamp01(emotion.presenceLevel || 0.42));
+    assignScalar(state.emotion, "isListening", Boolean(emotion.isListening));
 
-  function syncEmotionState() {
-    const emotionBridge = bridges.emotionBridge;
-    if (!emotionBridge) {
-      return;
-    }
-    setIfChanged(state.emotion, "mood", emotionBridge.mood || "quiet");
-    setIfChanged(state.emotion, "breathLevel", clamp01(emotionBridge.breathLevel || 0.52));
-    setIfChanged(state.emotion, "presenceLevel", clamp01(emotionBridge.presenceLevel || 0.42));
-    setIfChanged(state.emotion, "isListening", Boolean(emotionBridge.isListening));
-  }
+    const companion = snapshot.companion || {};
+    assignScalar(state.companion, "stageMode", companion.stageMode || "presence");
+    assignScalar(state.companion, "speechLevel", clamp01(companion.speechLevel || 0));
+    assignScalar(state.companion, "rendererType", companion.rendererType || "Portrait Stage");
+    assignScalar(state.companion, "rendererCapability", companion.rendererCapability || "静态肖像、微光呼吸与声波脉冲");
 
-  function syncCompanionState() {
-    const companionBridge = bridges.companionBridge;
-    if (!companionBridge) {
-      return;
-    }
-    setIfChanged(state.companion, "stageMode", companionBridge.stageMode || "presence");
-    setIfChanged(state.companion, "speechLevel", clamp01(companionBridge.speechLevel || 0));
-    setIfChanged(state.companion, "rendererType", companionBridge.rendererType || "Portrait Stage");
-    setIfChanged(
-      state.companion,
-      "rendererCapability",
-      companionBridge.rendererCapability || "\u9759\u6001\u8096\u50cf\u3001\u5fae\u5149\u547c\u5438\u4e0e\u58f0\u6ce2\u8109\u51b2"
-    );
-  }
-
-  function syncWindowState() {
-    const windowBridge = bridges.windowBridge;
-    if (!windowBridge) {
-      return;
-    }
-    setIfChanged(state.window, "isFullscreen", Boolean(windowBridge.isFullscreen));
-  }
-
-  function syncAll() {
-    syncBootState();
-    syncAppState();
-    syncModelState();
-    syncChatState();
-    syncEmotionState();
-    syncCompanionState();
-    syncWindowState();
+    const windowState = snapshot.window || {};
+    assignScalar(state.window, "isFullscreen", Boolean(windowState.isFullscreen));
   }
 
   async function initBridges() {
-    const objects = await createBridgeObjects();
-    if (!objects) {
+    try {
+      const snapshot = await getRuntimeState();
+      applySnapshot(snapshot);
+      state.boot.bridgeReady = true;
+      await connectRuntimeEvents((event) => {
+        if (event?.state) {
+          applySnapshot(event.state);
+        }
+      });
+      return true;
+    } catch (error) {
+      console.warn("Unable to connect Lumi runtime.", error);
       return false;
     }
+  }
 
-    Object.assign(bridges, {
-      appBridge: objects.appBridge,
-      modelBridge: objects.modelBridge,
-      chatBridge: objects.chatBridge,
-      emotionBridge: objects.emotionBridge,
-      companionBridge: objects.companionBridge,
-      shellBridge: objects.shellBridge,
-      windowBridge: objects.windowBridge
-    });
-
-    state.boot.bridgeReady = true;
-    syncAll();
-
-    connectSignal(bridges.shellBridge?.bootPhaseChanged, () => scheduleSync("boot", syncBootState));
-
-    connectSignal(bridges.appBridge?.currentPageChanged, () => scheduleSync("app", syncAppState));
-    connectSignal(bridges.appBridge?.currentSceneGroupChanged, () => scheduleSync("app", syncAppState));
-    connectSignal(bridges.appBridge?.settingsChanged, () => scheduleSync("app", syncAppState));
-    connectSignal(bridges.appBridge?.languageChanged, () => scheduleSync("app", syncAppState));
-    connectSignal(bridges.appBridge?.ambientModeChanged, () => scheduleSync("app", syncAppState));
-
-    connectSignal(bridges.modelBridge?.stateChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.progressChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.loadedChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.discoveryChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.selectionChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.storageChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.logAdded, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.componentStatusChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.downloadCatalogChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.downloadStateChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.downloadProgressChanged, () => scheduleSync("model", syncModelState));
-    connectSignal(bridges.modelBridge?.downloadLogAdded, () => scheduleSync("model", syncModelState));
-
-    connectSignal(bridges.chatBridge?.readyChanged, () => scheduleSync("chat", syncChatState));
-    connectSignal(bridges.chatBridge?.runningChanged, () => scheduleSync("chat", syncChatState));
-    connectSignal(bridges.chatBridge?.statusChanged, () => scheduleSync("chat", syncChatState));
-    connectSignal(bridges.chatBridge?.phaseChanged, () => scheduleSync("chat", syncChatState));
-    connectSignal(bridges.chatBridge?.messagesChanged, () => scheduleSync("chat", syncChatState));
-    connectSignal(bridges.chatBridge?.voiceLevelChanged, () => scheduleSync("chat", syncChatState));
-
-    connectSignal(bridges.emotionBridge?.moodChanged, () => scheduleSync("emotion", syncEmotionState));
-    connectSignal(bridges.emotionBridge?.breathLevelChanged, () => scheduleSync("emotion", syncEmotionState));
-    connectSignal(bridges.emotionBridge?.presenceLevelChanged, () => scheduleSync("emotion", syncEmotionState));
-    connectSignal(bridges.emotionBridge?.listeningChanged, () => scheduleSync("emotion", syncEmotionState));
-
-    connectSignal(bridges.companionBridge?.stageModeChanged, () => scheduleSync("companion", syncCompanionState));
-    connectSignal(bridges.companionBridge?.speechLevelChanged, () => scheduleSync("companion", syncCompanionState));
-    connectSignal(bridges.companionBridge?.rendererChanged, () => scheduleSync("companion", syncCompanionState));
-
-    connectSignal(bridges.windowBridge?.windowModeChanged, () => scheduleSync("window", syncWindowState));
-    return true;
+  function syncAll() {
+    return getRuntimeState().then(applySnapshot);
   }
 
   const derived = {
-    stateLabel: computed(() => STATUS_LABELS[state.runtime.state] || state.runtime.state || "\u9759\u7f6e"),
-    chatStageLabel: computed(() => STATUS_LABELS[state.chat.phase] || state.chat.phase || "\u9759\u7f6e"),
-    moodLabel: computed(() => MOOD_LABELS[state.emotion.mood] || state.emotion.mood || "\u9759\u7f6e"),
-    ambientModeLabel: computed(() => AMBIENT_MODE_LABELS[state.app.ambientMode] || "\u9759\u8c27"),
+    stateLabel: computed(() => STATUS_LABELS[state.runtime.state] || state.runtime.state || "静置"),
+    chatStageLabel: computed(() => STATUS_LABELS[state.chat.phase] || state.chat.phase || "静置"),
+    moodLabel: computed(() => MOOD_LABELS[state.emotion.mood] || state.emotion.mood || "静置"),
+    ambientModeLabel: computed(() => AMBIENT_MODE_LABELS[state.app.ambientMode] || "静谧"),
     progressRatio: computed(() => {
       if (state.runtime.progressTotal > 0) {
         return clamp01(state.runtime.progressStep / state.runtime.progressTotal);
@@ -508,19 +417,19 @@ export function useBridgeState() {
     breathPercent: computed(() => Math.round(clamp01(state.emotion.breathLevel) * 100)),
     storagePercent: computed(() => Math.round(clamp01(state.runtime.storageUsageRatio) * 100)),
     conversationReady: computed(() => state.runtime.loaded || state.chat.ready),
-    entryLabel: computed(() => (derived.conversationReady.value ? "\u5f00\u59cb\u5bf9\u8bdd" : "\u5524\u9192\u6838\u5fc3")),
+    entryLabel: computed(() => (derived.conversationReady.value ? "开始对话" : "唤醒核心")),
     entryCaption: computed(() => (derived.conversationReady.value ? "Begin Conversation" : "Wake The Core")),
     presenceCopy: computed(() => {
       if (state.chat.phase === "replying") {
-        return "Lumi \u6b63\u5728\u56de\u5e94\u4f60\u3002";
+        return "Lumi 正在回应你。";
       }
       if (state.chat.running || state.emotion.isListening) {
-        return "Lumi \u6b63\u5728\u503e\u542c\u3002";
+        return "Lumi 正在倾听。";
       }
       if (derived.conversationReady.value) {
-        return "Lumi \u5df2\u7ecf\u5728\u8fd9\u91cc\u3002";
+        return "Lumi 已经在这里。";
       }
-      return "Lumi \u6b63\u5728\u9759\u9759\u5730\u8fce\u5019\u4f60\u3002";
+      return "Lumi 正在静静地迎候你。";
     }),
     bootPhaseCopy: computed(() => BOOT_PHASE_COPY[state.boot.phase] || "Preparing"),
     shortLogs: computed(() => state.runtime.logs.slice(-4)),
@@ -528,9 +437,7 @@ export function useBridgeState() {
     currentAsrName: computed(() => pickSelected(state.runtime.modelCatalog.asr)?.title || "Listening Node"),
     currentTtsName: computed(() => pickSelected(state.runtime.modelCatalog.tts)?.title || "Voice Node"),
     currentReferenceName: computed(() => basename(state.runtime.selectedRefAudio) || "Reference Audio"),
-    runtimePulse: computed(() =>
-      Math.max(clamp01(state.chat.voiceLevel), clamp01(state.companion.speechLevel), derived.progressRatio.value)
-    ),
+    runtimePulse: computed(() => Math.max(clamp01(state.chat.voiceLevel), clamp01(state.companion.speechLevel), derived.progressRatio.value)),
     drawerData: computed(() => {
       const catalog = state.runtime.modelCatalog;
       const selectedMap = {
@@ -543,9 +450,9 @@ export function useBridgeState() {
       if (state.ui.drawerNode === "reference") {
         return {
           type: "reference",
-          title: "\u8bb0\u5fc6\u6837\u672c",
+          title: "记忆样本",
           name: basename(state.runtime.selectedRefAudio) || "Reference Audio",
-          caption: state.runtime.selectedRefText || "\u5728\u6bcf\u4e00\u4e2a\u5b89\u9759\u7684\u591c\u91cc\uff0cLumi \u90fd\u4f1a\u5728\u8fd9\u91cc\u7b49\u4f60\u3002",
+          caption: state.runtime.selectedRefText || "在每一个安静的夜里，Lumi 都会在这里等你。",
           path: state.runtime.selectedRefAudio,
           options: catalog.reference || []
         };
@@ -555,14 +462,14 @@ export function useBridgeState() {
       const activePath = selectedMap[state.ui.drawerNode] || "";
       const activeEntry = entries.find((entry) => entry.path === activePath) || entries[0] || null;
       const drawerMeta = {
-        asr: { title: "\u542c\u89c9\u8282\u70b9", fallback: "Listening Node", caption: "\u8d1f\u8d23\u542c\u89c1\u4f60\u8f7b\u58f0\u8bf4\u51fa\u7684\u6bcf\u4e00\u4e2a\u5f00\u7aef\u3002" },
-        llm: { title: "\u601d\u7ef4\u6838\u5fc3", fallback: "Reasoning Core", caption: "\u8d1f\u8d23\u6574\u7406\u8bed\u4e49\u3001\u8bb0\u5fc6\u4e0e\u56de\u5e94\u610f\u613f\u3002" },
-        tts: { title: "\u58f0\u7ebf\u8282\u70b9", fallback: "Voice Node", caption: "\u8d1f\u8d23\u8ba9\u56de\u5e94\u62e5\u6709\u53ef\u88ab\u8fa8\u8ba4\u7684\u58f0\u7ebf\u3002" }
+        asr: { title: "听觉节点", fallback: "Listening Node", caption: "负责听见你轻声说出的每一个开端。" },
+        llm: { title: "思维核心", fallback: "Reasoning Core", caption: "负责整理语义、记忆与回应意愿。" },
+        tts: { title: "声线节点", fallback: "Voice Node", caption: "负责让回应拥有可被辨认的声线。" }
       };
       const meta = drawerMeta[state.ui.drawerNode] || {
-        title: "\u8282\u70b9\u8be6\u60c5",
+        title: "节点详情",
         fallback: "Node",
-        caption: "\u8282\u70b9\u4ecd\u5728\u7b49\u5f85\u4e0b\u4e00\u6b21\u88ab\u5524\u9192\u3002"
+        caption: "节点仍在等待下一次被唤醒。"
       };
 
       return {
@@ -578,95 +485,82 @@ export function useBridgeState() {
 
   const bridgeActions = {
     async notifyFrontendReady() {
-      return Boolean(await callQt(bridges.shellBridge, "frontendReady"));
+      return runtimeCommand("/api/shell/frontend-ready");
     },
     async loadModels() {
-      return Boolean(await callQt(bridges.modelBridge, "loadSelectedModels"));
+      return runtimeCommand("/api/model/load");
     },
     async switchModels() {
-      await callQt(bridges.modelBridge, "switchSelectedModels");
-      return true;
+      return runtimeCommand("/api/model/switch");
     },
     async releaseCache() {
-      await callQt(bridges.modelBridge, "releaseCache");
-      return true;
+      return runtimeCommand("/api/model/release-cache");
     },
     async scanModels() {
-      await callQt(bridges.modelBridge, "scanModels");
-      return true;
+      return runtimeCommand("/api/model/scan");
     },
     async scanComponents() {
-      await callQt(bridges.modelBridge, "scanComponents");
-      return true;
+      return runtimeCommand("/api/model/scan-components");
     },
     async openModelGalaxy() {
-      await callQt(bridges.modelBridge, "openModelGalaxy");
-      return true;
+      return runtimeCommand("/api/model/open-galaxy");
     },
     async startModelDownload(kind, provider, modelId, displayName) {
-      return Boolean(await callQt(bridges.modelBridge, "startModelDownload", kind, provider, modelId, displayName));
+      return runtimeCommand("/api/model/download/start", { kind, provider, modelId, displayName });
     },
     async cancelModelDownload() {
-      return Boolean(await callQt(bridges.modelBridge, "cancelModelDownload"));
+      return runtimeCommand("/api/model/download/cancel");
     },
     async selectModel(type, path) {
-      await callQt(bridges.modelBridge, "selectModel", type, path);
-      return true;
+      return runtimeCommand("/api/model/select", { type, path });
     },
     async openLocalFolder(path) {
-      return Boolean(await callQt(bridges.modelBridge, "openPath", path || derived.drawerData.value.path));
+      return runtimeCommand("/api/model/open-path", { path: path || derived.drawerData.value.path });
     },
     async startVoice() {
-      return Boolean(await callQt(bridges.chatBridge, "startVoice"));
+      return runtimeCommand("/api/chat/start-voice");
     },
     async stopVoice() {
-      await callQt(bridges.chatBridge, "stopVoice");
-      return true;
+      return runtimeCommand("/api/chat/stop-voice");
     },
     async clearChat() {
-      await callQt(bridges.chatBridge, "clear");
-      return true;
+      return runtimeCommand("/api/chat/clear");
     },
     async sendCurrentText() {
       const text = state.ui.composerText.trim();
       if (!text) {
         return false;
       }
-      await callQt(bridges.chatBridge, "sendText", text);
-      state.ui.composerText = "";
-      return true;
+      const ok = await runtimeCommand("/api/chat/send-text", { text });
+      if (ok) {
+        state.ui.composerText = "";
+      }
+      return ok;
     },
     async saveSettings() {
-      await callQt(
-        bridges.appBridge,
-        "saveSettings",
-        state.app.language,
-        state.app.checkUpdateOnStartup,
-        state.app.startupPage,
-        state.app.reduceMotion
-      );
-      return true;
+      return runtimeCommand("/api/app/settings", {
+        language: state.app.language,
+        checkUpdateOnStartup: state.app.checkUpdateOnStartup,
+        startupPage: state.app.startupPage,
+        reduceMotion: state.app.reduceMotion
+      });
     },
     async setAmbientMode(mode) {
       const normalized = String(mode || "quiet").trim().toLowerCase();
       state.app.ambientMode = normalized || "quiet";
-      return Boolean(await callQt(bridges.appBridge, "setAmbientMode", normalized));
+      return runtimeCommand("/api/app/ambient-mode", { mode: normalized });
     },
     async setMood(mood) {
-      await callQt(bridges.emotionBridge, "setMood", mood);
-      return true;
+      return runtimeCommand("/api/emotion/mood", { mood });
     },
-    async minimizeWindow() {
-      return Boolean(await callQt(bridges.windowBridge, "minimize"));
-    },
-    async toggleWindowMode() {
-      return Boolean(await callQt(bridges.windowBridge, "toggleWindowMode"));
-    },
+    minimizeWindow,
+    toggleWindowMode,
     async closeWindow() {
-      return Boolean(await callQt(bridges.windowBridge, "close"));
+      await shutdownBackend();
+      return closeWindow();
     },
-    async moveWindowBy(dx, dy) {
-      return Boolean(await callQt(bridges.windowBridge, "moveBy", dx, dy));
+    async moveWindowBy() {
+      return false;
     }
   };
 

@@ -92,6 +92,12 @@
   contain: paint;
 }
 
+.scene-panel:not(.is-active) *,
+.scene-panel:not(.is-active) *::before,
+.scene-panel:not(.is-active) *::after {
+  animation-play-state: paused !important;
+}
+
 .message-fade-enter-active {
   animation: lumi-message-enter var(--duration-md) var(--ease-standard);
 }

@@ -21,6 +21,9 @@ skills-lock.json
 build/
 dist/
 node_modules/
+target/
+ui/web/.cargo/
+ui/web/src-tauri/gen/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/

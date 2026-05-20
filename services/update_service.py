@@ -3,29 +3,43 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 import tempfile
+import threading
 import urllib.request
 import zipfile
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QThread, Signal
-
 from config import PROJECT_ROOT
+from core.events import EventHook
 from core.integrity import DEFAULT_CORE_FILES
 
 
-class UpdateService(QThread):
-    progress = Signal(str)
-    finished = Signal(bool, str)
-
+class UpdateService:
     def __init__(self, manifest_url: str = "", project_root: Path | None = None):
-        super().__init__()
         self.manifest_url = manifest_url.strip()
         self.project_root = project_root or PROJECT_ROOT
+        self.progress = EventHook()
+        self.finished = EventHook()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
 
-    def run(self) -> None:
-        self.check_and_apply()
+    def start(self) -> None:
+        if self.is_alive():
+            return
+        self._thread = threading.Thread(target=self.check_and_apply, name="LumiUpdateService", daemon=True)
+        self._thread.start()
+
+    def is_alive(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
+
+    def request_stop(self) -> None:
+        self._stop_event.set()
+
+    def join(self, timeout: float | None = None) -> None:
+        if self._thread:
+            self._thread.join(timeout=timeout)
 
     def check_and_apply(self) -> None:
         if not self.manifest_url:
@@ -65,7 +79,7 @@ class UpdateService(QThread):
                 self._copy_tree(extract_dir, self.project_root)
 
                 self.progress.emit("Restarting LumiMate...")
-                QProcess.startDetached(str(sys.executable), [str(self.project_root / "main.py")], str(self.project_root))
+                subprocess.Popen([sys.executable, str(self.project_root / "launcher.py")], cwd=str(self.project_root))
                 self.finished.emit(True, "Update applied. LumiMate is restarting.")
         except Exception as exc:
             if backup_dir and backup_dir.exists():

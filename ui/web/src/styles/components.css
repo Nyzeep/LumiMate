@@ -363,7 +363,7 @@
 .rail-nav__button.is-active .rail-glyph,
 .rail-nav__group-button:hover .rail-glyph,
 .rail-nav__group-button.is-active .rail-glyph {
-  filter: drop-shadow(0 0 5px rgba(255, 212, 150, 0.32)) drop-shadow(0 0 14px rgba(255, 140, 0, 0.18));
+  opacity: 1;
 }
 
 .rail-nav__button-glow {

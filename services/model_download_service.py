@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import shutil
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QThread, Signal
+from core.events import EventHook
 
 
 @dataclass(slots=True)
@@ -27,22 +28,29 @@ def _safe_model_name(value: str) -> str:
     return cleaned.strip("._") or "model"
 
 
-class ModelDownloadService(QThread):
-    state_changed = Signal(str, str)
-    progress_changed = Signal(int, str)
-    log_added = Signal(str)
-    finished_with_result = Signal(bool, str, str, str)
-
-    def __init__(self, request: ModelDownloadRequest, parent=None):
-        super().__init__(parent)
+class ModelDownloadService:
+    def __init__(self, request: ModelDownloadRequest):
         self.request = request
+        self.state_changed = EventHook()
+        self.progress_changed = EventHook()
+        self.log_added = EventHook()
+        self.finished_with_result = EventHook()
         self._cancel_requested = False
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self.is_alive():
+            return
+        self._thread = threading.Thread(target=self._run, name="LumiModelDownload", daemon=True)
+        self._thread.start()
+
+    def is_alive(self) -> bool:
+        return bool(self._thread and self._thread.is_alive())
 
     def cancel(self) -> None:
         self._cancel_requested = True
-        self.requestInterruption()
 
-    def run(self) -> None:
+    def _run(self) -> None:
         try:
             self._emit_state("scanning", "正在确认模型星轨坐标...")
             self._emit_progress(4, "正在准备下载目录")
