@@ -30,6 +30,17 @@ def _ensure_rust_path() -> None:
         os.environ["PATH"] = cargo_bin_text + os.pathsep + os.environ.get("PATH", "")
 
 
+def _resolve_tool(name: str) -> str | None:
+    candidates = [name]
+    if os.name == "nt" and not name.lower().endswith((".exe", ".cmd", ".bat")):
+        candidates = [f"{name}.cmd", f"{name}.exe", name]
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
 def _venv_python() -> Path:
     if os.name == "nt":
         return PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
@@ -162,7 +173,7 @@ def _run_desktop() -> int:
         print("LumiMate desktop shell is missing. Run `python launcher.py --api` to start the backend only.")
         return 1
 
-    if not shutil.which("cargo"):
+    if not _resolve_tool("cargo"):
         print(
             "LumiMate now uses Tauri as the desktop shell.\n"
             "Rust/Cargo is not installed, so the native UI cannot be started from `python launcher.py` yet.\n\n"
@@ -174,7 +185,18 @@ def _run_desktop() -> int:
         )
         return 1
 
-    return subprocess.call(["npm", "run", "tauri:dev"], cwd=str(frontend))
+    npm = _resolve_tool("npm")
+    if not npm:
+        print(
+            "LumiMate desktop shell requires Node.js/npm.\n"
+            "Install Node.js, then run:\n"
+            "  cd ui\\web\n"
+            "  npm install\n"
+            "  npm run tauri:dev"
+        )
+        return 1
+
+    return subprocess.call([npm, "run", "tauri:dev"], cwd=str(frontend))
 
 
 def main(argv: list[str] | None = None) -> int:
