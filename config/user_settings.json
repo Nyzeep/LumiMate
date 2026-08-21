@@ -1,7 +1,7 @@
 {
-  "language": "en-US",
-  "check_update_on_startup": true,
+  "language": "zh-CN",
+  "check_update_on_startup": false,
   "startup_page": "workbench",
   "reduce_motion": false,
-  "ambient_mode": "stream"
+  "ambient_mode": "quiet"
 }
