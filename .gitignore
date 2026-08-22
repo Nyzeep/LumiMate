@@ -16,6 +16,7 @@ env/
 .codex/
 .agents/
 skills-lock.json
+config/user_settings.json
 
 # Build and cache output
 build/

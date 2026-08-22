@@ -1,7 +1,7 @@
 {
   "language": "zh-CN",
   "check_update_on_startup": false,
-  "startup_page": "workbench",
+  "startup_page": "home",
   "reduce_motion": false,
   "ambient_mode": "quiet"
 }
