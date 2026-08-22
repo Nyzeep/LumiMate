@@ -16,8 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import APP_AUTHOR, APP_PHILOSOPHY, APP_VERSION, PROJECT_ROOT, PROJECT_URL, UPDATE_MANIFEST_URL, AssistantConfig, UserSettings
 from controllers import MainController
+from services.model_catalog import MODEL_DOWNLOAD_CATALOG, directory_size_bytes, discover_model_directories
 from services.model_download_service import ModelDownloadRequest, ModelDownloadService
-
 
 VALID_AMBIENT_MODES = {"quiet", "breath", "stream"}
 VALID_SCENES = {
@@ -33,62 +33,20 @@ VALID_SCENES = {
 }
 DEFAULT_SCENES_BY_GROUP = {0: "home", 1: "workbench", 2: "settings"}
 
-MODEL_DOWNLOAD_CATALOG: dict[str, list[dict[str, Any]]] = {
-    "asr": [
-        {
-            "id": "qwen3-asr-flash",
-            "title": "Qwen3 ASR Flash",
-            "subtitle": "轻量听觉节点，适合作为 Lumi 的默认耳朵。",
-            "sizeLabel": "约 5 GB",
-            "providers": {
-                "modelscope": "Qwen/Qwen3-ASR-Flash",
-                "huggingface": "Qwen/Qwen3-ASR-Flash",
-            },
-        },
-        {
-            "id": "qwen2-audio-7b",
-            "title": "Qwen2 Audio 7B",
-            "subtitle": "更完整的音频理解节点，下载和运行成本更高。",
-            "sizeLabel": "约 15 GB",
-            "providers": {
-                "modelscope": "qwen/Qwen2-Audio-7B-Instruct",
-                "huggingface": "Qwen/Qwen2-Audio-7B-Instruct",
-            },
-        },
-    ],
-    "llm": [
-        {
-            "id": "qwen2-5-0-5b-instruct",
-            "title": "Qwen2.5 0.5B Instruct",
-            "subtitle": "小体量思维核心，适合先让 Lumi 轻盈醒来。",
-            "sizeLabel": "约 1 GB",
-            "providers": {
-                "modelscope": "qwen/Qwen2.5-0.5B-Instruct",
-                "huggingface": "Qwen/Qwen2.5-0.5B-Instruct",
-            },
-        },
-        {
-            "id": "qwen2-5-1-5b-instruct",
-            "title": "Qwen2.5 1.5B Instruct",
-            "subtitle": "更稳定的本地对话核心，需要更多显存与磁盘空间。",
-            "sizeLabel": "约 3 GB",
-            "providers": {
-                "modelscope": "qwen/Qwen2.5-1.5B-Instruct",
-                "huggingface": "Qwen/Qwen2.5-1.5B-Instruct",
-            },
-        },
-    ],
-    "tts": [
-        {
-            "id": "tts-placeholder",
-            "title": "声线星系预留",
-            "subtitle": "TTS 将在后续版本支持用户自行加载角色声线模型。",
-            "sizeLabel": "稍后开放",
-            "providers": {},
-            "placeholder": True,
-        }
-    ],
-}
+DEFAULT_CORS_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "tauri://localhost",
+]
+
+
+def _cors_origins() -> list[str]:
+    raw = os.environ.get("LUMIMATE_CORS_ORIGINS", "").strip()
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return list(DEFAULT_CORS_ORIGINS)
 
 
 def _normalize_scene(scene: str) -> str:
@@ -99,44 +57,6 @@ def _normalize_scene(scene: str) -> str:
 def _normalize_ambient_mode(mode: str) -> str:
     mode = str(mode or "quiet").strip().lower()
     return mode if mode in VALID_AMBIENT_MODES else "quiet"
-
-
-def _discover_leaf_directories(root: Path) -> list[str]:
-    if not root.exists():
-        return []
-    if any(root.iterdir()) and any(item.is_file() for item in root.iterdir()):
-        return [str(root)]
-
-    candidates: list[str] = []
-    for child in sorted(root.iterdir(), key=lambda path: path.name.lower()):
-        if not child.is_dir():
-            continue
-        if any(item.is_file() for item in child.iterdir()):
-            candidates.append(str(child))
-            continue
-        for nested in sorted(child.rglob("*"), key=lambda path: path.name.lower()):
-            if nested.is_dir() and any(item.is_file() for item in nested.iterdir()):
-                candidates.append(str(nested))
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for item in candidates:
-        if item not in seen:
-            deduped.append(item)
-            seen.add(item)
-    return deduped
-
-
-def _directory_size_bytes(root: Path) -> int:
-    if not root.exists():
-        return 0
-    total = 0
-    for file_path in root.rglob("*"):
-        if file_path.is_file():
-            try:
-                total += file_path.stat().st_size
-            except OSError:
-                continue
-    return total
 
 
 def _format_bytes(value: int) -> str:
@@ -362,9 +282,9 @@ class LumiRuntime:
 
     def scan_models(self, emit: bool = True) -> bool:
         models_root = PROJECT_ROOT / "models"
-        self.asr_models = _discover_leaf_directories(models_root / "asr_model")
-        self.llm_models = _discover_leaf_directories(models_root / "llm_model")
-        self.tts_models = _discover_leaf_directories(models_root / "tts_model")
+        self.asr_models = discover_model_directories(models_root / "asr_model")
+        self.llm_models = discover_model_directories(models_root / "llm_model")
+        self.tts_models = discover_model_directories(models_root / "tts_model")
         if self.selected_asr not in self.asr_models and self.asr_models:
             self.selected_asr = self.asr_models[0]
         if self.selected_llm not in self.llm_models and self.llm_models:
@@ -628,7 +548,7 @@ class LumiRuntime:
         self.storage_items = []
         tracked_total = 0
         for title_key, path in targets:
-            size_bytes = _directory_size_bytes(path)
+            size_bytes = directory_size_bytes(path)
             tracked_total += size_bytes
             self.storage_items.append(
                 {
@@ -797,7 +717,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=_cors_origins(),
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -922,7 +842,6 @@ def main(argv: list[str] | None = None) -> int:
 
     uvicorn.run(create_app(), host=args.host, port=args.port, log_level="warning")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

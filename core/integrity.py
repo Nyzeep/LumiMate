@@ -17,6 +17,7 @@ DEFAULT_CORE_FILES = [
     "runtime/server.py",
     "services/assistant_service.py",
     "services/model_manager.py",
+    "services/model_catalog.py",
     "services/model_download_service.py",
     "services/update_service.py",
     "core/voice_assistant.py",

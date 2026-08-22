@@ -106,6 +106,8 @@ python launcher.py --api --host 127.0.0.1 --port 8765
 http://127.0.0.1:5173/?apiBase=http://127.0.0.1:8765
 ```
 
+> 提示：Runtime 默认只允许本地开发与 Tauri 页面来源跨域访问；如需允许其他来源，请设置环境变量 `LUMIMATE_CORS_ORIGINS`（逗号分隔的来源白名单）。
+
 ### 模型目录
 
 LumiMate 默认扫描：
@@ -129,13 +131,15 @@ LumiMate/
 ├─ controllers/             主控制器
 ├─ services/                模型、下载、更新与助手服务
 ├─ core/                    启动、完整性、事件和语音核心逻辑
-├─ config/                  应用配置与用户设置
+├─ config/                  应用配置与用户设置模板
 ├─ ui/
 │  ├─ web/                  Vue 3 + Vite 前端与 Tauri 工程
 │  └─ assets/               资源清单
 ├─ resources/               作者头像、参考音频、界面纹理
 └─ 背景图片/                LumiMate 正式背景源
 ```
+
+> 用户个人设置保存在 config/user_settings.json（本地状态，不纳入版本控制），新环境可参考 config/user_settings.example.json 创建。
 
 ### 发布注意事项
 
