@@ -13,6 +13,7 @@ from typing import Any, Callable
 from services.agent.bridge.session_manager import SessionManager
 from services.agent.events import build_agent_event
 from services.agent.models import SessionProjection, Task
+from services.agent.memory import MemoryError
 from services.agent.permissions import MEDIUM_CATEGORIES
 from services.agent.tools.registry import is_allowed_tool
 from services.agent.state_machine import (
@@ -36,6 +37,8 @@ class AgentService:
         publisher: Callable[[dict[str, Any]], None],
         workspace: str,
         policy: Any | None = None,
+        projections: Any | None = None,
+        memory: Any | None = None,
     ) -> None:
         self._store = store
         self._sessions = SessionManager(sessions_root)
@@ -48,6 +51,14 @@ class AgentService:
         from services.agent.permissions import PermissionPolicy
 
         self._policy = policy if policy is not None else PermissionPolicy()
+        self._projections = projections
+        self._memory = memory
+        for task in self._store.load_all().values():
+            self._store.save(task)
+        if projections is not None:
+            self._sessions.restore_projections(
+                list(projections.load_all().values())
+            )
         bridge.publisher = self._on_bridge_event
 
     # ---- 查询 ----
@@ -353,6 +364,50 @@ class AgentService:
         text = getattr(result, "final_response", "") if result is not None else ""
         return [{"summary": text}] if text else None
 
+    def propose_memory(
+        self,
+        summary: str,
+        kind: str,
+        source_task_id: str | None = None,
+    ) -> dict[str, Any]:
+        if self._memory is None:
+            raise MemoryError("memory store 未配置")
+        proposal = self._memory.propose(summary, kind, source_task_id)
+        self._publish(
+            build_agent_event(
+                "agent.memory.proposed",
+                proposalId=proposal["proposalId"],
+                summary=proposal["summary"],
+                kind=proposal["kind"],
+            )
+        )
+        return proposal
+
+    def confirm_memory(
+        self,
+        proposal_id: str,
+        accept: bool,
+    ) -> dict[str, Any]:
+        if self._memory is None:
+            raise MemoryError("memory store 未配置")
+        return self._memory.confirm(proposal_id, accept)
+
+    def _sync_projection(self, task: Task) -> None:
+        if self._projections is None:
+            return
+        projection = self._sessions.update_projection(
+            task.session_id,
+            status=task.state.value,
+            title=task.title,
+            summary=task.summary,
+            last_result=task.result,
+        )
+        if projection is None:
+            projection = self._sessions.start_projection(
+                task.session_id, task.id, task.title
+            )
+        self._projections.save(projection)
+
     def _save_and_publish(
         self,
         task: Task,
@@ -360,6 +415,7 @@ class AgentService:
         **fields: Any,
     ) -> None:
         self._store.save(task)
+        self._sync_projection(task)
         self._publish(
             build_agent_event(
                 event_type,

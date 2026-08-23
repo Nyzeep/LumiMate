@@ -29,7 +29,10 @@ from tests.test_agent_service import FakeBridge
 WORKSPACE = r"D:\LumiMate"
 
 
-def make_http_service(tmp_path: Path):
+def make_http_service(tmp_path: Path, with_stores: bool = False):
+    from services.agent.memory import MemoryStore
+    from services.agent.persistence import ProjectionStore
+
     bridge = FakeBridge()
     service = AgentService(
         store=TaskStore(tmp_path / "tasks"),
@@ -37,9 +40,10 @@ def make_http_service(tmp_path: Path):
         bridge=bridge,
         publisher=lambda _event: None,
         workspace=WORKSPACE,
+        projections=ProjectionStore(tmp_path / "projections") if with_stores else None,
+        memory=MemoryStore(tmp_path / "memory") if with_stores else None,
     )
     return service, bridge
-
 
 def test_agent_status_with_service_returns_service_status(tmp_path):
     service, _ = make_http_service(tmp_path)
@@ -176,3 +180,38 @@ def test_permission_approval_flow_via_http(tmp_path):
         )
     assert permission.json()["task"]["state"] == "running"
     assert bridge.approval_answers == [(session_id, "call-1", True)]
+
+
+def test_memory_propose_and_confirm_via_http(tmp_path):
+    service, _ = make_http_service(tmp_path, with_stores=True)
+    app = create_app(agent_service=service)
+    with TestClient(app) as client:
+        propose = client.post(
+            "/api/agent/memory/propose",
+            json={"summary": "用户偏好 pytest", "kind": "preference", "sourceTaskId": "t1"},
+        )
+    propose_body = propose.json()
+    assert propose_body["ok"] is True
+    proposal_id = propose_body["proposal"]["proposalId"]
+    assert propose_body["proposal"]["status"] == "pending"
+
+    with TestClient(app) as client:
+        confirm = client.post(
+            "/api/agent/memory/confirm",
+            json={"proposalId": proposal_id, "accept": True},
+        )
+    assert confirm.json()["proposal"]["status"] == "accepted"
+    assert len(service._memory.list_memories()) == 1
+
+
+def test_memory_confirm_unknown_proposal_via_http(tmp_path):
+    service, _ = make_http_service(tmp_path, with_stores=True)
+    app = create_app(agent_service=service)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/agent/memory/confirm",
+            json={"proposalId": "memory-nope", "accept": True},
+        )
+    body = response.json()
+    assert body["ok"] is False
+    assert body["error"]["code"] == "MEMORY_INVALID"

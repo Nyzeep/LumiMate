@@ -16,3 +16,4 @@
 **Comments:**
 
 （无）
+- 2026-08-23 实现：ProjectionStore（投影字段白名单落盘，不含事件日志）、MemoryStore（三步流程：propose pending → confirm 接受才写入，拒绝丢弃，未知/重复报错）、AgentService 重启恢复（任务 paused+interrupted + 投影恢复）、memory propose/confirm 路由与事件；全套验证通过。

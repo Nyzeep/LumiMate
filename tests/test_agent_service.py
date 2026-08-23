@@ -36,7 +36,10 @@ class FakeBridge:
         self.closed = True
 
 
-def make_service(tmp_path: Path) -> tuple[AgentService, FakeBridge, list[dict]]:
+def make_service(tmp_path: Path, with_stores: bool = False) -> tuple[AgentService, FakeBridge, list[dict]]:
+    from services.agent.memory import MemoryStore
+    from services.agent.persistence import ProjectionStore
+
     bridge = FakeBridge()
     published: list[dict] = []
     service = AgentService(
@@ -45,9 +48,10 @@ def make_service(tmp_path: Path) -> tuple[AgentService, FakeBridge, list[dict]]:
         bridge=bridge,
         publisher=published.append,
         workspace=WORKSPACE,
+        projections=ProjectionStore(tmp_path / "projections") if with_stores else None,
+        memory=MemoryStore(tmp_path / "memory") if with_stores else None,
     )
     return service, bridge, published
-
 
 def complete_plan(service: AgentService, bridge: FakeBridge, task) -> None:
     bridge.last_results[task.session_id] = type(
@@ -372,3 +376,38 @@ def test_non_whitelisted_tool_is_denied_without_ask(tmp_path):
     assert denied["status"] == "error"
     assert not any(e["type"] == "agent.task.awaiting_permission" for e in published)
 
+
+
+def test_restart_recovers_tasks_and_projections(tmp_path):
+    service, bridge, _ = make_service(tmp_path, with_stores=True)
+    task = service.start_task(title="重启任务", goal="g", workspace=WORKSPACE)
+    service._save_and_publish(task, "agent.task.planning")
+
+    restarted, _, _ = make_service(tmp_path, with_stores=True)
+
+    recovered = restarted.get_task(task.id)
+    assert recovered.state == TaskState.PAUSED
+    assert recovered.interrupted is True
+    assert any(s["sessionId"] == task.session_id for s in restarted.list_sessions())
+
+
+def test_propose_memory_publishes_event_and_confirm_saves(tmp_path):
+    service, _, published = make_service(tmp_path, with_stores=True)
+
+    proposal = service.propose_memory("用户偏好 pytest", "preference", source_task_id="t1")
+
+    event = next(e for e in published if e["type"] == "agent.memory.proposed")
+    assert event["proposalId"] == proposal["proposalId"]
+    service.confirm_memory(proposal["proposalId"], accept=True)
+    assert len(service._memory.list_memories()) == 1
+
+
+def test_memory_without_store_raises(tmp_path):
+    service, _, _ = make_service(tmp_path)
+    try:
+        from services.agent.memory import MemoryError
+
+        service.propose_memory("x", "preference")
+        raise AssertionError("should have raised")
+    except MemoryError:
+        pass

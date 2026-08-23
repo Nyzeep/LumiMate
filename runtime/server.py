@@ -22,6 +22,7 @@ from config import APP_AUTHOR, APP_PHILOSOPHY, APP_VERSION, PROJECT_ROOT, PROJEC
 from controllers import MainController
 from services.model_catalog import MODEL_DOWNLOAD_CATALOG, directory_size_bytes, discover_model_directories
 from services.model_download_service import ModelDownloadRequest, ModelDownloadService
+from services.agent.memory import MemoryError
 
 VALID_AMBIENT_MODES = {"quiet", "breath", "stream"}
 VALID_SCENES = {
@@ -855,6 +856,35 @@ def create_app(agent_service: Any | None = None) -> FastAPI:
         except ValueError as exc:
             return _agent_error("INVALID_WORKSPACE", str(exc))
         return {"ok": True, "task": task.to_api_dict()}
+    @app.post("/api/agent/memory/propose")
+    async def agent_memory_propose(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            proposal = service.propose_memory(
+                summary=str(payload.get("summary") or ""),
+                kind=str(payload.get("kind") or ""),
+                source_task_id=str(payload.get("sourceTaskId") or "") or None,
+            )
+        except (MemoryError, ValueError) as exc:
+            return _agent_error("MEMORY_INVALID", str(exc))
+        return {"ok": True, "proposal": proposal}
+
+    @app.post("/api/agent/memory/confirm")
+    async def agent_memory_confirm(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            proposal = service.confirm_memory(
+                str(payload.get("proposalId") or ""),
+                accept=_as_bool(payload.get("accept", False)),
+            )
+        except (MemoryError, ValueError) as exc:
+            return _agent_error("MEMORY_INVALID", str(exc))
+        return {"ok": True, "proposal": proposal}
+
     @app.post("/api/shell/frontend-ready")
     async def frontend_ready() -> dict[str, Any]:
         return {"ok": runtime.frontend_ready()}

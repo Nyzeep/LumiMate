@@ -11,7 +11,9 @@ from .events import (
 )
 
 from .models import Grant, SessionProjection, Task
+from .memory import MemoryError, MemoryStore
 from .permissions import MEDIUM_CATEGORIES, PermissionPolicy, RiskLevel, classify_action
+from .persistence import ProjectionStore
 from .service import AgentService
 from .state_machine import (
     IllegalTransitionError,
@@ -30,6 +32,9 @@ __all__ = [
     "PermissionPolicy",
     "RiskLevel",
     "classify_action",
+    "MemoryError",
+    "MemoryStore",
+    "ProjectionStore",
     "MEMORY_EVENT_TYPES",
     "SESSION_EVENT_TYPES",
     "TASK_EVENT_TYPES",
@@ -45,5 +50,6 @@ __all__ = [
     "build_transition_event",
     "can_transition",
 ]
+
 
 

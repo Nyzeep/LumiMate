@@ -60,5 +60,10 @@ class SessionManager:
             resume_index=resume_index,
         )
 
+    def restore_projections(self, projections: list[SessionProjection]) -> None:
+        for projection in projections:
+            self._projections[projection.session_id] = projection
+
     def list_projections(self) -> list[SessionProjection]:
         return list(self._projections.values())
+
