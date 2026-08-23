@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: 后端（pytest + runtime 冒烟）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装 Python 依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: 运行测试
+        run: python -m pytest
+      - name: Runtime 冒烟检查
+        run: python runtime/server.py --check
+
+  frontend:
+    name: 前端（npm run build）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 安装前端依赖
+        working-directory: ui/web
+        run: npm ci
+      - name: 构建前端
+        working-directory: ui/web
+        run: npm run build
