@@ -139,6 +139,14 @@ const actions = {
   startVoice: bridgeActions.startVoice,
   stopVoice: bridgeActions.stopVoice,
   clearChat: bridgeActions.clearChat,
+  agentStartTask: bridgeActions.agentStartTask,
+  agentApprovePlan: bridgeActions.agentApprovePlan,
+  agentApprovePermission: bridgeActions.agentApprovePermission,
+  agentPauseTask: bridgeActions.agentPauseTask,
+  agentResumeTask: bridgeActions.agentResumeTask,
+  agentCancelTask: bridgeActions.agentCancelTask,
+  agentResumeSession: bridgeActions.agentResumeSession,
+  agentListSessions: bridgeActions.agentListSessions,
   async sendCurrentText() {
     noteActivity();
     await bridgeActions.sendCurrentText();

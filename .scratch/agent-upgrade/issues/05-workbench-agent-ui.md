@@ -17,3 +17,4 @@
 **Comments:**
 
 （无）
+- 2026-08-23 实现：composables/agentState.js 纯 reducer（三态归约、§8 事件更新，Node 验证 PASSED）；useBridgeState 按 event.type 分发 agent.* + /api/agent/status 初始加载 + bridgeActions.agent*；WorkbenchScene 新增「任务舱」子空间（保留 core/galaxy：三态首屏、任务面板、权限/计划确认、暂停/恢复/取消、Session 列表）；AppShell 动作接线；npm run build 通过。
