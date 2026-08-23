@@ -38,7 +38,7 @@ def test_write_outside_workspace_is_high():
     assert (
         classify_action(
             "write",
-            path=r"C:\Outside\a.py",
+            path="../outside.py",
             workspace=r"D:\LumiMate",
         )
         == RiskLevel.HIGH
@@ -217,3 +217,4 @@ def test_no_auto_escalation_parameters_accepted():
 
 def test_medium_categories_match_spec():
     assert MEDIUM_CATEGORIES == frozenset({"file_modify", "test", "lint", "typecheck"})
+

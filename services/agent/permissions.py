@@ -73,12 +73,15 @@ HIGH_RISK_COMMAND_KEYWORDS: tuple[str, ...] = (
 
 def _is_inside(path_value: str, workspace: str) -> bool:
     try:
-        resolved = Path(path_value).resolve()
-        root = Path(workspace).resolve()
+        path = Path(path_value)
+        root = Path(workspace)
+        if not path.is_absolute():
+            path = root / path
+        resolved = path.resolve()
+        resolved_root = root.resolve()
     except OSError:
         return False
-    return resolved.is_relative_to(root)
-
+    return resolved.is_relative_to(resolved_root)
 
 def classify_action(
     action: str,
