@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import re
 import threading
+from pathlib import Path
 from typing import Any, Callable
 
 from services.agent.bridge.wire_mapper import (
@@ -23,10 +26,12 @@ class HarnessBridge:
         *,
         publisher: Callable[[dict[str, Any]], None] | None = None,
         shutdown_timeout_seconds: float = 10.0,
+        approval_inbox: str | Path | None = None,
     ) -> None:
         self._client_factory = client_factory
         self._publish = publisher or (lambda _event: None)
         self._shutdown_timeout = shutdown_timeout_seconds
+        self._approval_inbox = Path(approval_inbox) if approval_inbox else None
         self._client: Any = None
         self._threads: dict[str, threading.Thread] = {}
         self._outcomes: dict[str, str] = {}
@@ -161,12 +166,30 @@ class HarnessBridge:
             except Exception:  # noqa: BLE001 —— 终止路径不因 close 异常而失败
                 pass
 
+    def answer_approval(self, session_id: str, request_id: str, approve: bool) -> None:
+        """把审批决定写入 cordis 插件 inbox（与 Spike 的 lumimate-approval-bridge 通道一致）。"""
+        if self._approval_inbox is None:
+            raise RuntimeError("approval inbox 未配置")
+        key = self._approval_key(session_id, request_id)
+        self._approval_inbox.mkdir(parents=True, exist_ok=True)
+        decision_path = self._approval_inbox / f"{key}.decision.json"
+        decision_path.write_text(
+            json.dumps({"decision": "allow" if approve else "reject"}),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _approval_key(session_id: str, request_id: str) -> str:
+        base = re.sub(r"[^A-Za-z0-9_-]", "_", str(request_id or ""))
+        return f"{session_id}__{base}" if base else str(session_id)
+
     def close(self) -> None:
         if self._client is not None:
             try:
                 self._client.close()
             except Exception:  # noqa: BLE001
                 pass
+
 
 
 

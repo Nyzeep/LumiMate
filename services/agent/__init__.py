@@ -11,6 +11,7 @@ from .events import (
 )
 
 from .models import Grant, SessionProjection, Task
+from .permissions import MEDIUM_CATEGORIES, PermissionPolicy, RiskLevel, classify_action
 from .service import AgentService
 from .state_machine import (
     IllegalTransitionError,
@@ -25,6 +26,10 @@ __all__ = [
     "ALL_AGENT_EVENT_TYPES",
     "AgentEventError",
     "AgentService",
+    "MEDIUM_CATEGORIES",
+    "PermissionPolicy",
+    "RiskLevel",
+    "classify_action",
     "MEMORY_EVENT_TYPES",
     "SESSION_EVENT_TYPES",
     "TASK_EVENT_TYPES",
@@ -40,4 +45,5 @@ __all__ = [
     "build_transition_event",
     "can_transition",
 ]
+
 

@@ -782,7 +782,16 @@ def create_app(agent_service: Any | None = None) -> FastAPI:
         kind = str(payload.get("kind") or "plan")
         approve = _as_bool(payload.get("approve", False))
         if kind == "permission":
-            return _agent_error("NOT_IMPLEMENTED", "权限策略在 T3 实现")
+            try:
+                task = service.approve_permission(
+                    task_id,
+                    request_id=str(payload.get("requestId") or ""),
+                    grant_category=str(payload.get("grantCategory") or ""),
+                    approve=_as_bool(payload.get("approve", False)),
+                )
+            except (KeyError, ValueError, RuntimeError) as exc:
+                return _agent_error("INVALID_STATE", str(exc))
+            return {"ok": True, "task": task.to_api_dict()}
         if kind != "plan":
             return _agent_error("INVALID_KIND", f"未知审批类型：{kind}")
         try:

@@ -23,6 +23,7 @@ def test_tool_call_event_maps_to_tool_started():
             "toolName": "write",
             "callId": "call-1",
             "status": "running",
+            "arguments": "{}",
         }
     ]
 
@@ -149,3 +150,4 @@ def test_subagent_finished_notification_maps_to_nothing():
         )
         == []
     )
+

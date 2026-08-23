@@ -41,6 +41,7 @@ def map_session_event(
                 toolName=str(data.get("name") or "unknown"),
                 callId=str(data.get("callId") or ""),
                 status="running",
+                arguments=str(data.get("arguments") or ""),
             )
         ]
 
@@ -112,4 +113,5 @@ def map_run_result(
             )
         ]
     return []
+
 

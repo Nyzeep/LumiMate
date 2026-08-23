@@ -121,3 +121,58 @@ def test_session_resume_and_list_via_http(tmp_path):
     assert any(s["sessionId"] == "s-existing" for s in listing.json()["sessions"])
 
 
+
+
+def test_permission_approval_flow_via_http(tmp_path):
+    service, bridge = make_http_service(tmp_path)
+    app = create_app(agent_service=service)
+    with TestClient(app) as client:
+        start_response = client.post(
+            "/api/agent/task/start",
+            json={"title": "t", "goal": "g", "workspace": WORKSPACE},
+        )
+    task = start_response.json()["task"]
+    task_id = task["taskId"]
+    session_id = task["sessionId"]
+    bridge.last_results[session_id] = type(
+        "Result", (), {"final_response": "计划"}
+    )()
+    service.on_bridge_event(
+        {
+            "type": "agent.task.completed",
+            "taskId": task_id,
+            "sessionId": session_id,
+        }
+    )
+    with TestClient(app) as client:
+        approve_plan = client.post(
+            "/api/agent/task/approve",
+            json={"taskId": task_id, "kind": "plan", "approve": True},
+        )
+        assert approve_plan.json()["task"]["state"] == "running"
+
+    service.on_bridge_event(
+        {
+            "type": "agent.task.tool_started",
+            "taskId": task_id,
+            "sessionId": session_id,
+            "toolName": "write",
+            "callId": "call-1",
+            "arguments": '{"file_path": "D:\\\\LumiMate\\\\a.py"}',
+        }
+    )
+    assert service.get_task(task_id).state.value == "awaiting_permission"
+
+    with TestClient(app) as client:
+        permission = client.post(
+            "/api/agent/task/approve",
+            json={
+                "taskId": task_id,
+                "kind": "permission",
+                "requestId": "call-1",
+                "grantCategory": "file_modify",
+                "approve": True,
+            },
+        )
+    assert permission.json()["task"]["state"] == "running"
+    assert bridge.approval_answers == [(session_id, "call-1", True)]

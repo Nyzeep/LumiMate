@@ -17,3 +17,4 @@
 **Comments:**
 
 （无）
+- 2026-08-23 实现：RiskLevel/classify_action（§13 全表）、PermissionPolicy（四元组 Grant、终态/Workspace 失效、无自动提升）、AgentService 工具拦截（无 Grant → awaiting_permission + §8 事件）、approve_permission（Medium 建 Grant、High 单次放行）、HarnessBridge.answer_approval（写插件 inbox）、路由 kind=permission。

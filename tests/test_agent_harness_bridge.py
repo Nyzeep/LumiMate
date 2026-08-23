@@ -1,4 +1,6 @@
+import json
 import threading
+import pytest
 from types import SimpleNamespace
 
 from services.agent.bridge.harness_bridge import HarnessBridge
@@ -140,3 +142,41 @@ def test_close_closes_client():
     bridge.start()
     bridge.close()
     assert fake.closed is True
+
+
+def test_answer_approval_writes_allow_decision(tmp_path):
+    bridge = HarnessBridge(
+        lambda: FakeHarness(),
+        publisher=lambda _event: None,
+        shutdown_timeout_seconds=0.2,
+        approval_inbox=tmp_path / "inbox",
+    )
+
+    bridge.answer_approval("s1", "call-1", True)
+
+    decision = json.loads(
+        (tmp_path / "inbox" / "s1__call-1.decision.json").read_text(encoding="utf-8")
+    )
+    assert decision == {"decision": "allow"}
+
+
+def test_answer_approval_writes_reject_decision(tmp_path):
+    bridge = HarnessBridge(
+        lambda: FakeHarness(),
+        publisher=lambda _event: None,
+        shutdown_timeout_seconds=0.2,
+        approval_inbox=tmp_path / "inbox",
+    )
+
+    bridge.answer_approval("s1", "call-1", False)
+
+    decision = json.loads(
+        (tmp_path / "inbox" / "s1__call-1.decision.json").read_text(encoding="utf-8")
+    )
+    assert decision == {"decision": "reject"}
+
+
+def test_answer_approval_without_inbox_raises():
+    bridge = HarnessBridge(lambda: FakeHarness(), publisher=lambda _event: None)
+    with pytest.raises(RuntimeError):
+        bridge.answer_approval("s1", "call-1", True)

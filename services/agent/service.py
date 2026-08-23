@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import threading
 import uuid
 from dataclasses import asdict
@@ -11,6 +13,7 @@ from typing import Any, Callable
 from services.agent.bridge.session_manager import SessionManager
 from services.agent.events import build_agent_event
 from services.agent.models import SessionProjection, Task
+from services.agent.permissions import MEDIUM_CATEGORIES
 from services.agent.state_machine import (
     TERMINAL_STATES,
     IllegalTransitionError,
@@ -31,6 +34,7 @@ class AgentService:
         bridge: Any,
         publisher: Callable[[dict[str, Any]], None],
         workspace: str,
+        policy: Any | None = None,
     ) -> None:
         self._store = store
         self._sessions = SessionManager(sessions_root)
@@ -38,7 +42,11 @@ class AgentService:
         self._publish = publisher
         self._workspace = workspace
         self._intents: dict[str, str] = {}
+        self._pending_tools: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
+        from services.agent.permissions import PermissionPolicy
+
+        self._policy = policy if policy is not None else PermissionPolicy()
         bridge.publisher = self._on_bridge_event
 
     # ---- 查询 ----
@@ -177,6 +185,94 @@ class AgentService:
             self._bridge.run_task(task.session_id, task.id, task.goal)
             return task
 
+
+    def approve_permission(
+        self,
+        task_id: str,
+        *,
+        request_id: str,
+        grant_category: str,
+        approve: bool,
+    ) -> Task:
+        task = self.get_task(task_id)
+        if task is None:
+            raise KeyError(f"未知 taskId：{task_id}")
+        with self._lock:
+            if task.state != TaskState.AWAITING_PERMISSION:
+                raise IllegalTransition(task)
+            if approve:
+                if grant_category in MEDIUM_CATEGORIES:
+                    self._policy.grant(
+                        task_id=task.id,
+                        session_id=task.session_id,
+                        workspace=task.workspace,
+                        category=grant_category,
+                    )
+                apply_transition(task.state, TaskState.RUNNING)
+                task.state = TaskState.RUNNING
+                self._save_and_publish(task, "agent.task.running")
+                pending = self._pending_tools.pop(request_id, None)
+                if pending is not None:
+                    self._publish(pending)
+            else:
+                apply_transition(task.state, TaskState.CANCELLED)
+                task.state = TaskState.CANCELLED
+                self._save_and_publish(task, "agent.task.cancelled")
+                self._pending_tools.pop(request_id, None)
+            self._bridge.answer_approval(task.session_id, request_id, approve)
+            return task
+
+    def _handle_tool_event(self, event: dict[str, Any]) -> None:
+        task_id = event.get("taskId")
+        if not task_id:
+            return
+        task = self.get_task(task_id)
+        if task is None:
+            return
+        if task.state != TaskState.RUNNING:
+            self._publish(event)
+            return
+        arguments = self._parse_arguments(event.get("arguments"))
+        path_value = arguments.get("file_path") or arguments.get("path")
+        command = arguments.get("command")
+        _level, decision = self._policy.check(
+            task_id=task.id,
+            session_id=task.session_id,
+            workspace=task.workspace,
+            action=str(event.get("toolName") or ""),
+            path=str(path_value) if path_value else None,
+            command=str(command) if command else None,
+        )
+        if decision == "allow":
+            self._publish(event)
+            return
+        call_id = str(event.get("callId") or "")
+        from services.agent.permissions import CATEGORY_FOR_ACTION
+
+        category = CATEGORY_FOR_ACTION.get(str(event.get("toolName") or ""), "file_modify")
+        with self._lock:
+            apply_transition(task.state, TaskState.AWAITING_PERMISSION)
+            task.state = TaskState.AWAITING_PERMISSION
+            self._save_and_publish(
+                task,
+                "agent.task.awaiting_permission",
+                requestId=call_id,
+                category=category,
+                toolName=str(event.get("toolName") or ""),
+                details={"arguments": arguments},
+            )
+            self._pending_tools[call_id] = event
+
+    @staticmethod
+    def _parse_arguments(raw: Any) -> dict[str, Any]:
+        if not isinstance(raw, str) or not raw.strip():
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
     # ---- Bridge 事件回流 ----
 
 
@@ -186,7 +282,9 @@ class AgentService:
 
     def _on_bridge_event(self, event: dict[str, Any]) -> None:
         event_type = event.get("type", "")
-        if event_type in ("agent.task.completed", "agent.task.failed", "agent.task.cancelled"):
+        if event_type == "agent.task.tool_started":
+            self._handle_tool_event(event)
+        elif event_type in ("agent.task.completed", "agent.task.failed", "agent.task.cancelled"):
             self._handle_state_event(event)
         else:
             self._publish(event)
@@ -212,12 +310,15 @@ class AgentService:
                     apply_transition(task.state, TaskState.COMPLETED)
                     task.state = TaskState.COMPLETED
                     self._save_and_publish(task, "agent.task.completed")
+                    self._policy.revoke_for_task(task.id)
             elif event_type == "agent.task.failed":
                 if task.state in (TaskState.PLANNING, TaskState.RUNNING, TaskState.CANCELLING):
                     apply_transition(task.state, TaskState.FAILED)
                     task.state = TaskState.FAILED
                     self._save_and_publish(task, "agent.task.failed", failure=event.get("failure"))
+                    self._policy.revoke_for_task(task.id)
             elif event_type == "agent.task.cancelled":
+                self._policy.revoke_for_task(task.id)
                 intent = self._intents.pop(session_id, "cancel")
                 if intent == "pause" and task.state in (TaskState.RUNNING, TaskState.PAUSED):
                     if task.state == TaskState.RUNNING:
@@ -267,6 +368,8 @@ class AgentService:
 
 class IllegalTransition(IllegalTransitionError):
     """任务当前状态不允许该操作。"""
+
+
 
 
 
