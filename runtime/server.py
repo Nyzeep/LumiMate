@@ -11,6 +11,10 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+if __package__ in (None, ""):
+    # 直接以脚本方式运行时把项目根加入 sys.path，保证白名单命令 python runtime/server.py --check 可用
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -731,6 +735,16 @@ def create_app() -> FastAPI:
     async def state() -> dict[str, Any]:
         return runtime.snapshot()
 
+    @app.post("/api/agent/status")
+    async def agent_status() -> dict[str, Any]:
+        return {
+            "ok": True,
+            "ready": True,
+            "harnessAvailable": False,
+            "currentTask": None,
+            "sessions": [],
+        }
+
     @app.post("/api/shell/frontend-ready")
     async def frontend_ready() -> dict[str, Any]:
         return {"ok": runtime.frontend_ready()}
@@ -845,3 +859,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
