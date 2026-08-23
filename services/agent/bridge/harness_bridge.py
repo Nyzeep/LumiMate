@@ -20,6 +20,15 @@ from services.agent.events import build_agent_event
 class HarnessBridge:
     """通过注入的 SDK client 驱动 Harness；同步 API 在后台线程执行，不阻塞事件循环。"""
 
+    @property
+    def publisher(self) -> Callable[[dict[str, Any]], None]:
+        return self._publish
+
+    @publisher.setter
+    def publisher(self, value: Callable[[dict[str, Any]], None] | None) -> None:
+        if value is not None:
+            self._publish = value
+
     def __init__(
         self,
         client_factory: Callable[[], Any],
@@ -37,6 +46,7 @@ class HarnessBridge:
         self._client: Any = None
         self._threads: dict[str, threading.Thread] = {}
         self._outcomes: dict[str, str] = {}
+        self._results: dict[str, Any] = {}
         self._cancel_requested: set[str] = set()
         self._lock = threading.Lock()
 
@@ -45,6 +55,8 @@ class HarnessBridge:
         self._client.start()
 
     def run_task(self, session_id: str, task_id: str, goal: str) -> None:
+        if self._client is None:
+            self.start()
         thread = threading.Thread(
             target=self._worker,
             args=(session_id, task_id, goal),
@@ -87,6 +99,8 @@ class HarnessBridge:
                 )
                 outcome = "failed"
         else:
+            with self._lock:
+                self._results[session_id] = result
             cancelled = self._is_cancel_requested(session_id)
             if cancelled:
                 self._publish(
@@ -141,7 +155,6 @@ class HarnessBridge:
                     payload, task_id=task_id
                 ):
                     self._publish(event)
-            self._publish(event)
 
     def _is_cancel_requested(self, session_id: str) -> bool:
         with self._lock:
@@ -161,6 +174,10 @@ class HarnessBridge:
     def outcome(self, session_id: str) -> str | None:
         with self._lock:
             return self._outcomes.get(session_id)
+
+    def last_result(self, session_id: str) -> Any | None:
+        with self._lock:
+            return self._results.get(session_id)
 
     def cancel(self, session_id: str) -> str:
         """协作式取消：等待当前步骤自然结束，超时后终止 Harness 进程。"""
@@ -201,11 +218,3 @@ class HarnessBridge:
                 self._client.close()
             except Exception:  # noqa: BLE001
                 pass
-
-
-
-
-
-
-
-

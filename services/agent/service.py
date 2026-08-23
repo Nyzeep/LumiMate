@@ -186,6 +186,9 @@ class AgentService:
                 self._save_and_publish(current, "agent.task.cancelled")
             return current
 
+    def close(self) -> None:
+        self._bridge.close()
+
     def resume_task(self, task_id: str) -> Task:
         task = self.get_task(task_id)
         if task is None:
@@ -362,7 +365,7 @@ class AgentService:
     def _plan_from_result(self, task: Task) -> list[dict[str, Any]] | None:
         result = self._bridge.last_result(task.session_id)
         text = getattr(result, "final_response", "") if result is not None else ""
-        return [{"summary": text}] if text else None
+        return [{"summary": text}] if text else []
 
     def propose_memory(
         self,
@@ -440,6 +443,7 @@ class AgentService:
 
 class IllegalTransition(IllegalTransitionError):
     """任务当前状态不允许该操作。"""
+
 
 
 

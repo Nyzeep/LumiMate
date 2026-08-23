@@ -180,3 +180,22 @@ def test_answer_approval_without_inbox_raises():
     bridge = HarnessBridge(lambda: FakeHarness(), publisher=lambda _event: None)
     with pytest.raises(RuntimeError):
         bridge.answer_approval("s1", "call-1", True)
+
+
+def test_run_task_auto_starts_client():
+    fake = FakeHarness()
+    bridge = HarnessBridge(lambda: fake, publisher=lambda _event: None)
+    bridge.run_task(session_id="s1", task_id="t1", goal="任务")
+    assert fake.started is True
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+
+
+def test_run_stores_result_for_last_result():
+    fake = FakeHarness()
+    bridge, _ = make_bridge(fake)
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="任务")
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    result = bridge.last_result("s1")
+    assert result is not None
+    assert result.finish_reason == "completed"

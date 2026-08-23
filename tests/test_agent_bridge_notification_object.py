@@ -210,3 +210,47 @@ def test_bridge_projects_file_changed_and_test_result(tmp_path):
     assert test_event["passed"] == 2
     assert test_event["failed"] == 0
     assert test_event["durationMs"] == 400
+
+
+def test_bridge_publisher_setter_routes_events():
+    published: list[dict] = []
+
+    class SilentHarness:
+        started = False
+        closed = False
+        in_run = threading.Event()
+
+        def start(self):
+            self.started = True
+
+        def run(self, prompt, session_id=None, on_notification=None):
+            self.in_run.set()
+            if on_notification is not None and session_id:
+                on_notification(
+                    SimpleNamespace(
+                        method="session.event",
+                        payload={
+                            "sessionId": session_id,
+                            "event": {
+                                "type": "tool/call",
+                                "data": {
+                                    "callId": "c1",
+                                    "name": "read",
+                                    "arguments": "{}",
+                                },
+                            },
+                        },
+                    )
+                )
+            return SimpleNamespace(finish_reason="completed", final_response="ok")
+
+        def close(self):
+            self.closed = True
+
+    bridge = HarnessBridge(lambda: SilentHarness())
+    bridge.publisher = published.append
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="任务")
+
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    assert any(event["type"] == "agent.task.tool_started" for event in published)

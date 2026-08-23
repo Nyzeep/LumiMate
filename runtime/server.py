@@ -710,8 +710,17 @@ class LumiRuntime:
         return name.replace("_", " ").replace("-", " ").strip() or name
 
 
-def create_app(agent_service: Any | None = None) -> FastAPI:
+def create_app(agent_service: Any | None = None, agent_enabled: bool = False) -> FastAPI:
     manager = ConnectionManager()
+    if agent_enabled and agent_service is None:
+        from services.agent.runtime import build_agent_service
+
+        def agent_publish(event: dict[str, Any]) -> None:
+            event_type = str(event.get("type") or "")
+            payload = {key: value for key, value in event.items() if key != "type"}
+            manager.publish(event_type, payload)
+
+        agent_service = build_agent_service(str(PROJECT_ROOT), agent_publish)
     runtime = LumiRuntime(manager)
 
     @asynccontextmanager
@@ -720,6 +729,8 @@ def create_app(agent_service: Any | None = None) -> FastAPI:
         try:
             yield
         finally:
+            if agent_service is not None:
+                agent_service.close()
             runtime.shutdown()
 
     app = FastAPI(title="LumiMate Runtime", version=APP_VERSION, lifespan=lifespan)
