@@ -298,15 +298,28 @@ def test_high_tool_always_asks_even_after_approval(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task, tool_name="delete", call_id="call-1"))
+    service.on_bridge_event(
+        tool_started(
+            task,
+            tool_name="write",
+            call_id="call-1",
+            arguments='{"file_path": "C:\\\\Outside\\\\a.py"}',
+        )
+    )
     service.approve_permission(
-        task.id, request_id="call-1", grant_category="delete", approve=True
+        task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
 
-    service.on_bridge_event(tool_started(task, tool_name="delete", call_id="call-2"))
+    service.on_bridge_event(
+        tool_started(
+            task,
+            tool_name="write",
+            call_id="call-2",
+            arguments='{"file_path": "C:\\\\Outside\\\\b.py"}',
+        )
+    )
 
     assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
-
 
 def test_terminal_state_revokes_grants(tmp_path):
     service, bridge, _ = make_service(tmp_path)
@@ -333,3 +346,29 @@ def test_terminal_state_revokes_grants(tmp_path):
         action="write",
     )
     assert decision == "ask"
+
+
+def test_non_whitelisted_tool_is_denied_without_ask(tmp_path):
+    service, bridge, published = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+
+    service.on_bridge_event(
+        {
+            "type": "agent.task.tool_started",
+            "taskId": task.id,
+            "sessionId": task.session_id,
+            "toolName": "network",
+            "callId": "call-1",
+            "arguments": "{}",
+        }
+    )
+
+    assert service.get_task(task.id).state == TaskState.RUNNING
+    denied = next(
+        e for e in published if e["type"] == "agent.task.tool_finished"
+    )
+    assert denied["status"] == "error"
+    assert not any(e["type"] == "agent.task.awaiting_permission" for e in published)
+

@@ -17,3 +17,5 @@
 **Comments:**
 
 （无）
+- 2026-08-23 实现：tools/registry（§20 命令白名单 + 工具集）、tools/normalizer（ToolProjector：file_changed/test_result 派生，兼容真实嵌套 tool-result 形状）、AgentService 白名单拒绝（非白名单工具直接拒绝，不进入审批）、Bridge 投影接线。
+- Spike 阶段 3 PASSED：真实 agent 执行 `python -m pytest tests/test_runtime_checks.py -q`（4 passed，exit 0）；已记录会话回放派生 file_changed ×2 + test_result（4 passed/390ms）。

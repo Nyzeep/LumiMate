@@ -14,6 +14,7 @@ from services.agent.bridge.session_manager import SessionManager
 from services.agent.events import build_agent_event
 from services.agent.models import SessionProjection, Task
 from services.agent.permissions import MEDIUM_CATEGORIES
+from services.agent.tools.registry import is_allowed_tool
 from services.agent.state_machine import (
     TERMINAL_STATES,
     IllegalTransitionError,
@@ -233,6 +234,21 @@ class AgentService:
             self._publish(event)
             return
         arguments = self._parse_arguments(event.get("arguments"))
+        if not is_allowed_tool(
+            str(event.get("toolName") or ""), arguments
+        ):
+            self._publish(
+                build_agent_event(
+                    "agent.task.tool_finished",
+                    task_id=task.id,
+                    session_id=task.session_id,
+                    toolName=str(event.get("toolName") or ""),
+                    callId=str(event.get("callId") or ""),
+                    status="error",
+                    summary="工具不在白名单内",
+                )
+            )
+            return
         path_value = arguments.get("file_path") or arguments.get("path")
         command = arguments.get("command")
         _level, decision = self._policy.check(

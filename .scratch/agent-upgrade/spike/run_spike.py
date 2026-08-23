@@ -100,6 +100,7 @@ def main() -> int:
 
     from deepseek_harness import DeepSeekHarness
     from services.agent.bridge.wire_mapper import map_session_event
+    from services.agent.tools.normalizer import ToolProjector
 
     for path in (SESSION_ROOT, INBOX, OUTBOX):
         path.mkdir(parents=True, exist_ok=True)
@@ -109,6 +110,12 @@ def main() -> int:
 
     session_id = f"spike-{uuid.uuid4().hex[:12]}"
     task_id = f"task-{uuid.uuid4().hex[:8]}"
+    projector = ToolProjector(str(WORKSPACE))
+    phase3_goal = (
+        "使用 bash 运行 D:/LumiMate/.venv/Scripts/python.exe -m pytest tests/test_runtime_checks.py -q，"
+        "报告输出与退出码。不要修改任何文件。"
+    )
+
     artifact = SPIKE_DIR / "spike-result.txt"
 
     phase1_goal = (
@@ -138,7 +145,7 @@ def main() -> int:
             request_timeout_seconds=240,
             shutdown_timeout_seconds=10,
         ) as harness:
-            for index, goal in enumerate((phase1_goal, phase2_goal), start=1):
+            for index, goal in enumerate((phase1_goal, phase2_goal, phase3_goal), start=1):
                 turn_payloads: list[dict] = []
                 result = harness.run(
                     goal,
@@ -150,6 +157,13 @@ def main() -> int:
                 mapped: list[dict] = []
                 for payload in turn_payloads:
                     mapped.extend(map_session_event(payload, task_id=task_id))
+                    wire_type = payload.get("event", {}).get("type")
+                    if wire_type == "tool/call":
+                        projector.on_tool_call(payload)
+                    elif wire_type == "tool/result":
+                        mapped.extend(
+                            projector.on_tool_result(payload, task_id=task_id)
+                        )
                 results.append((index, result, mapped, turn_payloads))
     finally:
         approver.stop()
@@ -178,6 +192,21 @@ def main() -> int:
     print(f"[spike] approvals_answered={len(approver.asks)}")
     for ask in approver.asks:
         print(f"[spike] approval ask: tool={ask.get('toolName')} callId={ask.get('callId')}")
+    pytest_check = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/test_runtime_checks.py", "-q"],
+        cwd=str(WORKSPACE),
+        capture_output=True,
+        text=True,
+    )
+    test_results = [
+        event
+        for _, _, mapped, _ in results
+        for event in mapped
+        if event["type"] == "agent.task.test_result"
+    ]
+    print(f"[spike] pytest_local_exit={pytest_check.returncode}")
+    print(f"[spike] test_result_events={len(test_results)}")
+
     check_result = subprocess.run(
         [sys.executable, "runtime/server.py", "--check"],
         cwd=str(WORKSPACE),
@@ -208,10 +237,18 @@ def main() -> int:
     if check_result.returncode != 0:
         print("spike: FAILED — 白名单检查未通过")
         return 1
+    if pytest_check.returncode != 0:
+        print("spike: FAILED — pytest 未通过")
+        return 1
+    if not test_results:
+        print("spike: FAILED — 未派生 test_result 事件")
+        return 1
+        return 1
     print("spike: PASSED")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

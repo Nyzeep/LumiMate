@@ -27,11 +27,13 @@ class HarnessBridge:
         publisher: Callable[[dict[str, Any]], None] | None = None,
         shutdown_timeout_seconds: float = 10.0,
         approval_inbox: str | Path | None = None,
+        tool_projector: Any | None = None,
     ) -> None:
         self._client_factory = client_factory
         self._publish = publisher or (lambda _event: None)
         self._shutdown_timeout = shutdown_timeout_seconds
         self._approval_inbox = Path(approval_inbox) if approval_inbox else None
+        self._tool_projector = tool_projector
         self._client: Any = None
         self._threads: dict[str, threading.Thread] = {}
         self._outcomes: dict[str, str] = {}
@@ -129,6 +131,16 @@ class HarnessBridge:
             self._publish(event)
             return
         for event in map_session_event(payload, task_id=task_id):
+            self._publish(event)
+        if self._tool_projector is not None:
+            wire_event_type = payload.get("event", {}).get("type")
+            if wire_event_type == "tool/call":
+                self._tool_projector.on_tool_call(payload)
+            elif wire_event_type == "tool/result":
+                for event in self._tool_projector.on_tool_result(
+                    payload, task_id=task_id
+                ):
+                    self._publish(event)
             self._publish(event)
 
     def _is_cancel_requested(self, session_id: str) -> bool:
