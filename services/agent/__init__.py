@@ -11,6 +11,7 @@ from .events import (
 )
 
 from .models import Grant, SessionProjection, Task
+from .service import AgentService
 from .state_machine import (
     IllegalTransitionError,
     TERMINAL_STATES,
@@ -23,6 +24,7 @@ from .store import TaskStore
 __all__ = [
     "ALL_AGENT_EVENT_TYPES",
     "AgentEventError",
+    "AgentService",
     "MEMORY_EVENT_TYPES",
     "SESSION_EVENT_TYPES",
     "TASK_EVENT_TYPES",
@@ -38,3 +40,4 @@ __all__ = [
     "build_transition_event",
     "can_transition",
 ]
+

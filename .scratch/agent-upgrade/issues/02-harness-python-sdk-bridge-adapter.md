@@ -19,3 +19,6 @@
 **Comments:**
 
 （无）
+- 2026-08-23 Spike PASSED：node 载体 + 真实受控任务（双 turn completed、同 sessionId 续跑）、审批闭环（2 次 write 升级问询经自研 cordis 插件闭环）、白名单检查 exit 0。
+- ACP 先试结论：ACP 仅服务自有 agent 且仅支持 fresh sessions（无恢复），按 ADR 回退自研插件。
+- Bridge 实现：wire_mapper / session_manager / harness_bridge / AgentService / /api/agent/* 路由，全部测试通过（全套 208 passed）。

@@ -46,6 +46,12 @@ DEFAULT_CORS_ORIGINS = [
 ]
 
 
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
 def _cors_origins() -> list[str]:
     raw = os.environ.get("LUMIMATE_CORS_ORIGINS", "").strip()
     if raw:
@@ -703,7 +709,7 @@ class LumiRuntime:
         return name.replace("_", " ").replace("-", " ").strip() or name
 
 
-def create_app() -> FastAPI:
+def create_app(agent_service: Any | None = None) -> FastAPI:
     manager = ConnectionManager()
     runtime = LumiRuntime(manager)
 
@@ -718,6 +724,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="LumiMate Runtime", version=APP_VERSION, lifespan=lifespan)
     app.state.runtime = runtime
     app.state.manager = manager
+    app.state.agent_service = agent_service
 
     app.add_middleware(
         CORSMiddleware,
@@ -735,16 +742,110 @@ def create_app() -> FastAPI:
     async def state() -> dict[str, Any]:
         return runtime.snapshot()
 
+    def _agent_error(code: str, message: str) -> dict[str, Any]:
+        return {"ok": False, "error": {"code": code, "message": message}}
+
     @app.post("/api/agent/status")
     async def agent_status() -> dict[str, Any]:
-        return {
-            "ok": True,
-            "ready": True,
-            "harnessAvailable": False,
-            "currentTask": None,
-            "sessions": [],
-        }
+        service = app.state.agent_service
+        if service is None:
+            return {
+                "ok": True,
+                "ready": True,
+                "harnessAvailable": False,
+                "currentTask": None,
+                "sessions": [],
+            }
+        return {"ok": True, **service.status()}
 
+    @app.post("/api/agent/task/start")
+    async def agent_task_start(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.start_task(
+                title=str(payload.get("title") or ""),
+                goal=str(payload.get("goal") or ""),
+                workspace=str(payload.get("workspace") or ""),
+            )
+        except ValueError as exc:
+            return _agent_error("INVALID_WORKSPACE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/approve")
+    async def agent_task_approve(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        task_id = str(payload.get("taskId") or "")
+        kind = str(payload.get("kind") or "plan")
+        approve = _as_bool(payload.get("approve", False))
+        if kind == "permission":
+            return _agent_error("NOT_IMPLEMENTED", "权限策略在 T3 实现")
+        if kind != "plan":
+            return _agent_error("INVALID_KIND", f"未知审批类型：{kind}")
+        try:
+            task = service.approve_plan(task_id, approve=approve)
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/pause")
+    async def agent_task_pause(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.pause_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/resume")
+    async def agent_task_resume(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.resume_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/cancel")
+    async def agent_task_cancel(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.cancel_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/session/list")
+    async def agent_session_list() -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return {"ok": True, "sessions": []}
+        return {"ok": True, "sessions": service.list_sessions()}
+
+    @app.post("/api/agent/session/resume")
+    async def agent_session_resume(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.resume_session(
+                session_id=str(payload.get("sessionId") or ""),
+                title=str(payload.get("title") or "恢复任务"),
+                goal=str(payload.get("goal") or ""),
+                workspace=str(payload.get("workspace") or ""),
+            )
+        except ValueError as exc:
+            return _agent_error("INVALID_WORKSPACE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
     @app.post("/api/shell/frontend-ready")
     async def frontend_ready() -> dict[str, Any]:
         return {"ok": runtime.frontend_ready()}
@@ -859,4 +960,7 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
 

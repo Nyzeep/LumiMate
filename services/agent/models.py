@@ -39,13 +39,27 @@ class Task:
         payload["state"] = self.state.value
         return payload
 
+    def to_api_dict(self) -> dict[str, Any]:
+        """HTTP API 使用的 camelCase 投影（§7 字段风格）。"""
+        return {
+            "taskId": self.id,
+            "title": self.title,
+            "state": self.state.value,
+            "workspace": self.workspace,
+            "goal": self.goal,
+            "sessionId": self.session_id,
+            "plan": self.plan,
+            "summary": self.summary,
+            "result": self.result,
+            "failure": self.failure,
+            "interrupted": self.interrupted,
+        }
+
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> Task:
         data = dict(payload)
         data["state"] = TaskState(data["state"])
         return cls(**data)
-
-
 @dataclass
 class SessionProjection:
     """LumiMate 保存的 Session 摘要投影，而非完整 Harness 事件日志。"""
@@ -57,3 +71,4 @@ class SessionProjection:
     summary: str = ""
     last_result: dict[str, Any] | None = None
     resume_index: dict[str, Any] | None = None
+

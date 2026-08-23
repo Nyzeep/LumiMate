@@ -34,3 +34,13 @@ ui/web/src-tauri/gen/
 /GenieData/
 /models/
 /预编译的flash atn/
+
+# Local secrets
+.env
+
+
+# Spike runtime state
+.scratch/agent-upgrade/spike/sessions/
+.scratch/agent-upgrade/spike/approval-inbox/
+.scratch/agent-upgrade/spike/approval-outbox/
+

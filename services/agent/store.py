@@ -24,16 +24,17 @@ class TaskStore:
         payload = json.dumps(task.to_dict(), ensure_ascii=False, indent=2)
         self._path_for(task.id).write_text(payload, encoding="utf-8")
 
-    def load_all(self) -> dict[str, Task]:
+    def load_all(self, *, recover: bool = True) -> dict[str, Task]:
         if not self._root.exists():
             return {}
         tasks: dict[str, Task] = {}
         for path in self._root.glob("*.json"):
             task = Task.from_dict(json.loads(path.read_text(encoding="utf-8")))
-            tasks[task.id] = self._recover(task)
+            tasks[task.id] = self._recover(task) if recover else task
         return tasks
 
     def _recover(self, task: Task) -> Task:
         if task.state in TERMINAL_STATES:
             return task
         return replace(task, state=TaskState.PAUSED, interrupted=True)
+
