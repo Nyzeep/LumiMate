@@ -1,0 +1,7 @@
+# Harness Python SDK 开发依赖锁定
+# 本地 checkout：D:\DeepSeek Harness\deepseek-harness @ 47f943859b（0.1.0-rc.5）
+# SDK 与 runtime-bin 精确同版本（0.0.0.dev0，协议无版本协商，必须同源同版本）。
+# 安装（uv，项目包管理已切换为 uv）：
+#   uv pip install --python .venv/Scripts/python.exe -r requirements-harness.txt
+-e "D:\DeepSeek Harness\deepseek-harness\python\sdk-runtime"
+-e "D:\DeepSeek Harness\deepseek-harness\python\sdk"

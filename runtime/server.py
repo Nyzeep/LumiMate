@@ -11,6 +11,10 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+if __package__ in (None, ""):
+    # 直接以脚本方式运行时把项目根加入 sys.path，保证白名单命令 python runtime/server.py --check 可用
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,6 +22,7 @@ from config import APP_AUTHOR, APP_PHILOSOPHY, APP_VERSION, PROJECT_ROOT, PROJEC
 from controllers import MainController
 from services.model_catalog import MODEL_DOWNLOAD_CATALOG, directory_size_bytes, discover_model_directories
 from services.model_download_service import ModelDownloadRequest, ModelDownloadService
+from services.agent.memory import MemoryError
 
 VALID_AMBIENT_MODES = {"quiet", "breath", "stream"}
 VALID_SCENES = {
@@ -41,6 +46,12 @@ DEFAULT_CORS_ORIGINS = [
     "tauri://localhost",
 ]
 
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 def _cors_origins() -> list[str]:
     raw = os.environ.get("LUMIMATE_CORS_ORIGINS", "").strip()
@@ -699,8 +710,17 @@ class LumiRuntime:
         return name.replace("_", " ").replace("-", " ").strip() or name
 
 
-def create_app() -> FastAPI:
+def create_app(agent_service: Any | None = None, agent_enabled: bool = False) -> FastAPI:
     manager = ConnectionManager()
+    if agent_enabled and agent_service is None:
+        from services.agent.runtime import build_agent_service
+
+        def agent_publish(event: dict[str, Any]) -> None:
+            event_type = str(event.get("type") or "")
+            payload = {key: value for key, value in event.items() if key != "type"}
+            manager.publish(event_type, payload)
+
+        agent_service = build_agent_service(str(PROJECT_ROOT), agent_publish)
     runtime = LumiRuntime(manager)
 
     @asynccontextmanager
@@ -709,11 +729,14 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            if agent_service is not None:
+                agent_service.close()
             runtime.shutdown()
 
     app = FastAPI(title="LumiMate Runtime", version=APP_VERSION, lifespan=lifespan)
     app.state.runtime = runtime
     app.state.manager = manager
+    app.state.agent_service = agent_service
 
     app.add_middleware(
         CORSMiddleware,
@@ -730,6 +753,148 @@ def create_app() -> FastAPI:
     @app.get("/api/state")
     async def state() -> dict[str, Any]:
         return runtime.snapshot()
+
+    def _agent_error(code: str, message: str) -> dict[str, Any]:
+        return {"ok": False, "error": {"code": code, "message": message}}
+
+    @app.post("/api/agent/status")
+    async def agent_status() -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return {
+                "ok": True,
+                "ready": True,
+                "harnessAvailable": False,
+                "currentTask": None,
+                "sessions": [],
+            }
+        return {"ok": True, **service.status()}
+
+    @app.post("/api/agent/task/start")
+    async def agent_task_start(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.start_task(
+                title=str(payload.get("title") or ""),
+                goal=str(payload.get("goal") or ""),
+                workspace=str(payload.get("workspace") or ""),
+            )
+        except ValueError as exc:
+            return _agent_error("INVALID_WORKSPACE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/approve")
+    async def agent_task_approve(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        task_id = str(payload.get("taskId") or "")
+        kind = str(payload.get("kind") or "plan")
+        approve = _as_bool(payload.get("approve", False))
+        if kind == "permission":
+            try:
+                task = service.approve_permission(
+                    task_id,
+                    request_id=str(payload.get("requestId") or ""),
+                    grant_category=str(payload.get("grantCategory") or ""),
+                    approve=_as_bool(payload.get("approve", False)),
+                )
+            except (KeyError, ValueError, RuntimeError) as exc:
+                return _agent_error("INVALID_STATE", str(exc))
+            return {"ok": True, "task": task.to_api_dict()}
+        if kind != "plan":
+            return _agent_error("INVALID_KIND", f"未知审批类型：{kind}")
+        try:
+            task = service.approve_plan(task_id, approve=approve)
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/pause")
+    async def agent_task_pause(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.pause_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/resume")
+    async def agent_task_resume(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.resume_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/task/cancel")
+    async def agent_task_cancel(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.cancel_task(str(payload.get("taskId") or ""))
+        except (KeyError, ValueError, RuntimeError) as exc:
+            return _agent_error("INVALID_STATE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+
+    @app.post("/api/agent/session/list")
+    async def agent_session_list() -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return {"ok": True, "sessions": []}
+        return {"ok": True, "sessions": service.list_sessions()}
+
+    @app.post("/api/agent/session/resume")
+    async def agent_session_resume(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            task = service.resume_session(
+                session_id=str(payload.get("sessionId") or ""),
+                title=str(payload.get("title") or "恢复任务"),
+                goal=str(payload.get("goal") or ""),
+                workspace=str(payload.get("workspace") or ""),
+            )
+        except ValueError as exc:
+            return _agent_error("INVALID_WORKSPACE", str(exc))
+        return {"ok": True, "task": task.to_api_dict()}
+    @app.post("/api/agent/memory/propose")
+    async def agent_memory_propose(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            proposal = service.propose_memory(
+                summary=str(payload.get("summary") or ""),
+                kind=str(payload.get("kind") or ""),
+                source_task_id=str(payload.get("sourceTaskId") or "") or None,
+            )
+        except (MemoryError, ValueError) as exc:
+            return _agent_error("MEMORY_INVALID", str(exc))
+        return {"ok": True, "proposal": proposal}
+
+    @app.post("/api/agent/memory/confirm")
+    async def agent_memory_confirm(payload: dict[str, Any] = Body(default_factory=dict)) -> dict[str, Any]:
+        service = app.state.agent_service
+        if service is None:
+            return _agent_error("AGENT_NOT_CONFIGURED", "Agent 子系统尚未配置")
+        try:
+            proposal = service.confirm_memory(
+                str(payload.get("proposalId") or ""),
+                accept=_as_bool(payload.get("accept", False)),
+            )
+        except (MemoryError, ValueError) as exc:
+            return _agent_error("MEMORY_INVALID", str(exc))
+        return {"ok": True, "proposal": proposal}
 
     @app.post("/api/shell/frontend-ready")
     async def frontend_ready() -> dict[str, Any]:
@@ -845,3 +1010,7 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+

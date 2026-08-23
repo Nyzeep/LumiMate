@@ -6,9 +6,11 @@ import {
   getRuntimeState,
   minimizeWindow,
   runtimeCommand,
+  runtimeRequest,
   shutdownBackend,
   toggleWindowMode
 } from "../runtimeClient";
+import { applyAgentSnapshot, createAgentState, reduceAgentEvent } from "./agentState";
 
 const STATUS_LABELS = {
   idle: "静置",
@@ -287,7 +289,8 @@ export function useBridgeState() {
     },
     window: {
       isFullscreen: false
-    }
+    },
+    agent: reactive(createAgentState())
   });
 
   const bridges = reactive({});
@@ -383,10 +386,19 @@ export function useBridgeState() {
     try {
       const snapshot = await getRuntimeState();
       applySnapshot(snapshot);
+      try {
+        const agentStatus = await runtimeRequest("/api/agent/status");
+        applyAgentSnapshot(state.agent, agentStatus);
+      } catch (error) {
+        console.warn("Unable to load agent status.", error);
+      }
       state.boot.bridgeReady = true;
       await connectRuntimeEvents((event) => {
         if (event?.state) {
           applySnapshot(event.state);
+        }
+        if (event?.type?.startsWith("agent.")) {
+          reduceAgentEvent(state.agent, event);
         }
       });
       return true;
@@ -397,7 +409,16 @@ export function useBridgeState() {
   }
 
   function syncAll() {
-    return getRuntimeState().then(applySnapshot);
+    return getRuntimeState().then(async (snapshot) => {
+      applySnapshot(snapshot);
+      try {
+        const agentStatus = await runtimeRequest("/api/agent/status");
+        applyAgentSnapshot(state.agent, agentStatus);
+      } catch (error) {
+        console.warn("Unable to refresh agent status.", error);
+      }
+      return snapshot;
+    });
   }
 
   const derived = {
@@ -552,6 +573,30 @@ export function useBridgeState() {
     },
     async setMood(mood) {
       return runtimeCommand("/api/emotion/mood", { mood });
+    },
+    async agentStartTask(title, goal) {
+      return runtimeCommand("/api/agent/task/start", { title, goal, workspace: state.app.projectRoot });
+    },
+    async agentApprovePlan(taskId, approve) {
+      return runtimeCommand("/api/agent/task/approve", { taskId, kind: "plan", approve });
+    },
+    async agentApprovePermission(taskId, requestId, grantCategory, approve) {
+      return runtimeCommand("/api/agent/task/approve", { taskId, kind: "permission", requestId, grantCategory, approve });
+    },
+    async agentPauseTask(taskId) {
+      return runtimeCommand("/api/agent/task/pause", { taskId });
+    },
+    async agentResumeTask(taskId) {
+      return runtimeCommand("/api/agent/task/resume", { taskId });
+    },
+    async agentCancelTask(taskId) {
+      return runtimeCommand("/api/agent/task/cancel", { taskId });
+    },
+    async agentResumeSession(sessionId, goal) {
+      return runtimeCommand("/api/agent/session/resume", { sessionId, goal, workspace: state.app.projectRoot });
+    },
+    async agentListSessions() {
+      return runtimeRequest("/api/agent/session/list");
     },
     minimizeWindow,
     toggleWindowMode,

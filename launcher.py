@@ -80,11 +80,12 @@ def _install_requirements(python_exe: Path) -> None:
     if not missing:
         return
     print("LumiMate: preparing Python runtime dependencies...")
-    subprocess.run(
-        [str(python_exe), "-m", "pip", "install", "-r", str(requirements)],
-        cwd=str(PROJECT_ROOT),
-        check=True,
-    )
+    uv = shutil.which("uv")
+    if uv:
+        command = [uv, "pip", "install", "--python", str(python_exe), "-r", str(requirements)]
+    else:
+        command = [str(python_exe), "-m", "pip", "install", "-r", str(requirements)]
+    subprocess.run(command, cwd=str(PROJECT_ROOT), check=True)
 
 
 def _missing_requirements(requirements: Path, python_exe: Path) -> list[str]:
@@ -230,3 +231,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
