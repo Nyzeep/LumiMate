@@ -44,3 +44,7 @@ ui/web/src-tauri/gen/
 .scratch/agent-upgrade/spike/approval-inbox/
 .scratch/agent-upgrade/spike/approval-outbox/
 
+
+# Agent runtime state
+.agent/
+
