@@ -307,7 +307,7 @@ def test_high_tool_always_asks_even_after_approval(tmp_path):
             task,
             tool_name="write",
             call_id="call-1",
-            arguments='{"file_path": "C:\\\\Outside\\\\a.py"}',
+            arguments='{"file_path": "../outside.py"}',
         )
     )
     service.approve_permission(
@@ -319,7 +319,7 @@ def test_high_tool_always_asks_even_after_approval(tmp_path):
             task,
             tool_name="write",
             call_id="call-2",
-            arguments='{"file_path": "C:\\\\Outside\\\\b.py"}',
+            arguments='{"file_path": "../outside.py"}',
         )
     )
 
