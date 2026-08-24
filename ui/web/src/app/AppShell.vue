@@ -79,6 +79,7 @@ const view = computed(() => ({
       })),
   modelCatalog: state.runtime.modelCatalog,
   runtimeMessage: state.runtime.message,
+  agent: state.agent,
   storageItems: state.runtime.storageItems,
   storageUsedLabel: state.runtime.storageUsedLabel,
   storageTotalLabel: state.runtime.storageTotalLabel,

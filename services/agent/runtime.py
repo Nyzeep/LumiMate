@@ -50,7 +50,7 @@ def build_agent_service(
         from deepseek_harness import DeepSeekHarness
 
         api_key = load_api_key(root)
-        os.environ.setdefault("DSH_RUNTIME_MODE", "node")
+        os.environ["DSH_RUNTIME_MODE"] = "node"
         os.environ.setdefault("DSH_CWD", str(root))
         os.environ.setdefault("DSH_SESSION_ROOT", str(sessions_root))
         os.environ.setdefault("DSH_CORDIS_CONFIG", str(cordis))

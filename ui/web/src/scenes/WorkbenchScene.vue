@@ -433,7 +433,7 @@ async function resumeSession(sessionId) {
           <div class="agent-start-form">
             <input v-model="local.agentTitle" class="agent-input" placeholder="任务标题" />
             <textarea v-model="local.agentGoal" class="agent-input" rows="3" placeholder="任务目标（例如：让 pytest 全绿）"></textarea>
-            <ActionButton label="发起任务" subtitle="Start" tier="primary" semantic="model" @click="startAgentTask" />
+            <ActionButton label="发起任务" subtitle="Start" :icon-path="ICON_PATHS.workbench" tier="primary" semantic="model" @click="startAgentTask" />
           </div>
         </div>
 

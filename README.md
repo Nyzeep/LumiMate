@@ -55,7 +55,7 @@ LumiMate
 你需要准备：
 
 - Python 3.11 或更新版本
-- Node.js 20 或更新版本
+- Node.js 22.19 或更新版本
 - Rust 工具链与 Cargo
 - Windows 上推荐安装 WebView2 Runtime
 
@@ -79,6 +79,14 @@ python launcher.py --check
 cd ui\web
 npm run tauri:dev
 ```
+
+### Task Agent 任务舱
+
+任务舱位于“运行空间 → 工作台 → 任务舱”。Tauri 启动 Runtime 时会启用 Task Agent，并通过 DeepSeek Harness 的 Node 载体执行任务。
+
+使用前请在项目根目录的 `.env` 配置有效的 `DEEPSEEK_API_KEY`；该文件不应提交到仓库。Windows 开发环境还需要 Node.js 22.19 或更新版本，任务发起后应先显示“规划中”或“等待计划确认”。
+
+> 提示：`harnessAvailable: true` 只表示 Harness 已装配；若任务显示认证失败，请更新 `DEEPSEEK_API_KEY`，不要把按钮点击成功视为任务已完成。
 
 构建前端：
 

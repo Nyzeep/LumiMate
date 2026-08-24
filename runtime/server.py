@@ -1005,7 +1005,7 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
 
-    uvicorn.run(create_app(), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(create_app(agent_enabled=True), host=args.host, port=args.port, log_level="warning")
     return 0
 
 if __name__ == "__main__":
