@@ -254,3 +254,43 @@ def test_bridge_publisher_setter_routes_events():
 
     assert bridge.wait_for_turn("s1", timeout=2) is True
     assert any(event["type"] == "agent.task.tool_started" for event in published)
+
+
+def test_bridge_ignores_malformed_notification_before_tool_projection():
+    published: list[dict] = []
+
+    class NoopProjector:
+        def on_tool_call(self, _payload):
+            raise AssertionError("malformed event must not reach the tool projector")
+
+        def on_tool_result(self, _payload, task_id=None):
+            raise AssertionError("malformed event must not reach the tool projector")
+
+    class MalformedHarness:
+        def start(self):
+            pass
+
+        def run(self, _prompt, session_id=None, on_notification=None):
+            if on_notification is not None and session_id:
+                on_notification(
+                    SimpleNamespace(
+                        method="session.event",
+                        payload={"sessionId": session_id, "event": "not-a-mapping"},
+                    )
+                )
+            return SimpleNamespace(finish_reason="completed", final_response="ok")
+
+        def close(self):
+            pass
+
+    bridge = HarnessBridge(
+        lambda: MalformedHarness(),
+        publisher=published.append,
+        tool_projector=NoopProjector(),
+    )
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="任务")
+
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    assert bridge.outcome("s1") == "completed"
+    assert [event["type"] for event in published] == ["agent.task.completed"]

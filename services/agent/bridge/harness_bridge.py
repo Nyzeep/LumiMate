@@ -9,12 +9,20 @@ from pathlib import Path
 from typing import Any, Callable
 
 from services.agent.bridge.wire_mapper import (
+    failure_from_exception,
     map_run_result,
     map_session_event,
     map_session_status,
     map_subagent_notification,
 )
 from services.agent.events import build_agent_event
+
+
+_TERMINAL_EVENT_OUTCOMES = {
+    "agent.task.completed": "completed",
+    "agent.task.failed": "failed",
+    "agent.task.cancelled": "cancelled",
+}
 
 
 class HarnessBridge:
@@ -47,6 +55,8 @@ class HarnessBridge:
         self._threads: dict[str, threading.Thread] = {}
         self._outcomes: dict[str, str] = {}
         self._results: dict[str, Any] = {}
+        self._turn_numbers: dict[str, int] = {}
+        self._terminal_event_outcomes: dict[tuple[str, int], str] = {}
         self._cancel_requested: set[str] = set()
         self._lock = threading.Lock()
 
@@ -54,12 +64,38 @@ class HarnessBridge:
         self._client = self._client_factory()
         self._client.start()
 
+    def _publish_event(
+        self,
+        event: dict[str, Any],
+        *,
+        turn_number: int | None = None,
+    ) -> bool:
+        """Publish one Task-facing Harness fact, with one terminal fact per Turn."""
+        terminal_outcome = _TERMINAL_EVENT_OUTCOMES.get(str(event.get("type") or ""))
+        session_id = str(event.get("sessionId") or "")
+        if terminal_outcome and session_id and turn_number is not None:
+            key = (session_id, turn_number)
+            with self._lock:
+                if key in self._terminal_event_outcomes:
+                    return False
+                self._terminal_event_outcomes[key] = terminal_outcome
+        self._publish(event)
+        return True
+
+    def _terminal_event_outcome(self, session_id: str, turn_number: int) -> str | None:
+        """Return the terminal outcome observed during one Harness Turn."""
+        with self._lock:
+            return self._terminal_event_outcomes.get((session_id, turn_number))
+
     def run_task(self, session_id: str, task_id: str, goal: str) -> None:
         if self._client is None:
             self.start()
+        with self._lock:
+            turn_number = self._turn_numbers.get(session_id, 0) + 1
+            self._turn_numbers[session_id] = turn_number
         thread = threading.Thread(
             target=self._worker,
-            args=(session_id, task_id, goal),
+            args=(session_id, task_id, goal, turn_number),
             name=f"harness-run-{session_id}",
             daemon=True,
         )
@@ -67,58 +103,71 @@ class HarnessBridge:
             self._threads[session_id] = thread
         thread.start()
 
-    def _worker(self, session_id: str, task_id: str, goal: str) -> None:
-        cancelled = False
+    def _worker(
+        self,
+        session_id: str,
+        task_id: str,
+        goal: str,
+        turn_number: int,
+    ) -> None:
         try:
             result = self._client.run(
                 goal,
                 session_id=session_id,
                 on_notification=lambda notification: self._on_notification(
-                    notification, task_id, session_id
+                    notification,
+                    task_id,
+                    session_id,
+                    turn_number,
                 ),
             )
         except Exception as exc:  # noqa: BLE001 —— SDK 传输错误统一映射为失败
-            cancelled = self._is_cancel_requested(session_id)
-            if cancelled:
-                self._publish(
+            if self._is_cancel_requested(session_id):
+                self._publish_event(
                     build_agent_event(
                         "agent.task.cancelled",
                         task_id=task_id,
                         session_id=session_id,
-                    )
+                    ),
+                    turn_number=turn_number,
                 )
-                outcome = "cancelled"
+                outcome = self._terminal_event_outcome(session_id, turn_number) or "cancelled"
             else:
-                self._publish(
+                self._publish_event(
                     build_agent_event(
                         "agent.task.failed",
                         task_id=task_id,
                         session_id=session_id,
-                        failure={"reason": "error"},
-                    )
+                        failure=failure_from_exception(exc),
+                    ),
+                    turn_number=turn_number,
                 )
-                outcome = "failed"
+                outcome = self._terminal_event_outcome(session_id, turn_number) or "failed"
         else:
             with self._lock:
                 self._results[session_id] = result
-            cancelled = self._is_cancel_requested(session_id)
-            if cancelled:
-                self._publish(
+            if self._is_cancel_requested(session_id):
+                self._publish_event(
                     build_agent_event(
                         "agent.task.cancelled",
                         task_id=task_id,
                         session_id=session_id,
-                    )
+                    ),
+                    turn_number=turn_number,
                 )
-                outcome = "cancelled"
+                outcome = self._terminal_event_outcome(session_id, turn_number) or "cancelled"
             else:
                 for event in map_run_result(
                     result,
                     task_id=task_id,
                     session_id=session_id,
                 ):
-                    self._publish(event)
-                outcome = "completed"
+                    self._publish_event(event, turn_number=turn_number)
+                outcome = self._terminal_event_outcome(session_id, turn_number) or (
+                    "completed"
+                    if getattr(result, "finish_reason", None) == "completed"
+                    else "failed"
+                )
         with self._lock:
             self._outcomes[session_id] = outcome
 
@@ -127,14 +176,17 @@ class HarnessBridge:
         notification: Any,
         task_id: str,
         session_id: str,
+        turn_number: int | None = None,
     ) -> None:
         payload = getattr(notification, "payload", None)
         if not isinstance(payload, dict):
-            payload = notification
+            payload = notification if isinstance(notification, dict) else None
+        if not isinstance(payload, dict):
+            return
         method = getattr(notification, "method", None)
         if method == "subagent.started" or method == "subagent.finished":
             for event in map_subagent_notification(payload, task_id=task_id):
-                self._publish(event)
+                self._publish_event(event, turn_number=turn_number)
             return
         if method == "session.status":
             event = map_session_status(
@@ -142,19 +194,20 @@ class HarnessBridge:
                 str(payload.get("status") or ""),
                 task_id=task_id,
             )
-            self._publish(event)
+            self._publish_event(event, turn_number=turn_number)
             return
         for event in map_session_event(payload, task_id=task_id):
-            self._publish(event)
-        if self._tool_projector is not None:
-            wire_event_type = payload.get("event", {}).get("type")
+            self._publish_event(event, turn_number=turn_number)
+        wire_event = payload.get("event")
+        if self._tool_projector is not None and isinstance(wire_event, dict):
+            wire_event_type = wire_event.get("type")
             if wire_event_type == "tool/call":
                 self._tool_projector.on_tool_call(payload)
             elif wire_event_type == "tool/result":
                 for event in self._tool_projector.on_tool_result(
                     payload, task_id=task_id
                 ):
-                    self._publish(event)
+                    self._publish_event(event, turn_number=turn_number)
 
     def _is_cancel_requested(self, session_id: str) -> bool:
         with self._lock:

@@ -386,13 +386,6 @@ export function useBridgeState() {
     try {
       const snapshot = await getRuntimeState();
       applySnapshot(snapshot);
-      try {
-        const agentStatus = await runtimeRequest("/api/agent/status");
-        applyAgentSnapshot(state.agent, agentStatus);
-      } catch (error) {
-        console.warn("Unable to load agent status.", error);
-      }
-      state.boot.bridgeReady = true;
       await connectRuntimeEvents((event) => {
         if (event?.state) {
           applySnapshot(event.state);
@@ -401,6 +394,13 @@ export function useBridgeState() {
           reduceAgentEvent(state.agent, event);
         }
       });
+      try {
+        const agentStatus = await runtimeRequest("/api/agent/status", {});
+        applyAgentSnapshot(state.agent, agentStatus);
+      } catch (error) {
+        console.warn("Unable to load agent status.", error);
+      }
+      state.boot.bridgeReady = true;
       return true;
     } catch (error) {
       console.warn("Unable to connect Lumi runtime.", error);
@@ -412,7 +412,7 @@ export function useBridgeState() {
     return getRuntimeState().then(async (snapshot) => {
       applySnapshot(snapshot);
       try {
-        const agentStatus = await runtimeRequest("/api/agent/status");
+        const agentStatus = await runtimeRequest("/api/agent/status", {});
         applyAgentSnapshot(state.agent, agentStatus);
       } catch (error) {
         console.warn("Unable to refresh agent status.", error);

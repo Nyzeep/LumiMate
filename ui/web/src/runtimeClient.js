@@ -2,6 +2,7 @@ const DEFAULT_API_BASE = "http://127.0.0.1:8765";
 
 let backendInfoPromise = null;
 let websocket = null;
+let websocketReady = null;
 
 function trimSlash(value) {
   return String(value || "").replace(/\/+$/, "");
@@ -87,25 +88,37 @@ export async function runtimeCommand(path, body = {}) {
 
 export async function connectRuntimeEvents(onEvent) {
   const info = await backendInfo();
-  if (websocket && websocket.readyState <= WebSocket.OPEN) {
+  if (websocket?.readyState === WebSocket.OPEN) {
     return websocket;
   }
+  if (websocketReady) {
+    return websocketReady;
+  }
 
-  websocket = new WebSocket(info.wsUrl);
-  websocket.addEventListener("message", (event) => {
+  const socket = new WebSocket(info.wsUrl);
+  websocket = socket;
+  websocketReady = new Promise((resolve, reject) => {
+    socket.addEventListener("open", () => resolve(socket), { once: true });
+    socket.addEventListener("error", () => reject(new Error("Runtime event connection failed.")), { once: true });
+  });
+  socket.addEventListener("message", (event) => {
     try {
       onEvent(JSON.parse(event.data));
     } catch (error) {
       console.warn("Ignored malformed runtime event.", error);
     }
   });
-  websocket.addEventListener("close", () => {
+  socket.addEventListener("close", () => {
+    if (websocket !== socket) {
+      return;
+    }
+    websocket = null;
+    websocketReady = null;
     window.setTimeout(() => {
-      websocket = null;
       connectRuntimeEvents(onEvent).catch(() => {});
     }, 1200);
   });
-  return websocket;
+  return websocketReady;
 }
 
 export async function minimizeWindow() {

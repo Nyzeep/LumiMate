@@ -17,8 +17,8 @@ DEFAULT_MODEL = "deepseek-v4-flash"
 DEFAULT_PROVIDER = "deepseek-official"
 
 
-def load_api_key(workspace: str | Path, env_name: str = "DEEPSEEK_API_KEY") -> str:
-    """从环境变量或 gitignored 的 .env 读取 Key；不落库、不进 Git。"""
+def load_environment_value(workspace: str | Path, env_name: str) -> str:
+    """从环境变量或 gitignored 的 .env 读取一个 Harness 配置值。"""
     from_env = os.environ.get(env_name, "").strip()
     if from_env:
         return from_env
@@ -29,6 +29,48 @@ def load_api_key(workspace: str | Path, env_name: str = "DEEPSEEK_API_KEY") -> s
             if line.startswith(f"{env_name}="):
                 return line.split("=", 1)[1].strip()
     return ""
+
+
+def load_api_key(workspace: str | Path, env_name: str = "DEEPSEEK_API_KEY") -> str:
+    """读取 Key；不落库、不进 Git。"""
+    return load_environment_value(workspace, env_name)
+
+
+def build_harness_client(
+    workspace: str | Path,
+    *,
+    cordis_config: str | Path | None = None,
+) -> Any:
+    """Construct the public Harness SDK client used by Task Agent and diagnostics."""
+    from deepseek_harness import DeepSeekHarness
+    from deepseek_harness_runtime import resolve_bundled_launch_args
+
+    root = Path(workspace)
+    agent_dir = root / ".agent"
+    approval_inbox = agent_dir / "approval-inbox"
+    approval_outbox = agent_dir / "approval-outbox"
+    sessions_root = agent_dir / "sessions"
+    default_cordis = root / ".scratch" / "agent-upgrade" / "spike" / "cordis.yml"
+    cordis = Path(cordis_config) if cordis_config else default_cordis
+    api_key = load_api_key(root)
+    base_url = load_environment_value(root, "DEEPSEEK_BASE_URL")
+
+    return DeepSeekHarness(
+        provider=DEFAULT_PROVIDER,
+        model=DEFAULT_MODEL,
+        api_key=api_key,
+        base_url=base_url or None,
+        cwd=str(root),
+        session_root=str(sessions_root),
+        cordis=str(cordis),
+        request_timeout_seconds=240,
+        shutdown_timeout_seconds=10,
+        launch_args_override=resolve_bundled_launch_args("node"),
+        env={
+            "DSH_APPROVAL_INBOX": str(approval_inbox),
+            "DSH_APPROVAL_OUTBOX": str(approval_outbox),
+        },
+    )
 
 
 def build_agent_service(
@@ -47,33 +89,7 @@ def build_agent_service(
     cordis = Path(cordis_config) if cordis_config else default_cordis
 
     def client_factory() -> Any:
-        from deepseek_harness import DeepSeekHarness
-
-        api_key = load_api_key(root)
-        os.environ["DSH_RUNTIME_MODE"] = "node"
-        os.environ.setdefault("DSH_CWD", str(root))
-        os.environ.setdefault("DSH_SESSION_ROOT", str(sessions_root))
-        os.environ.setdefault("DSH_CORDIS_CONFIG", str(cordis))
-        os.environ.setdefault("DSH_APPROVAL_INBOX", str(approval_inbox))
-        os.environ.setdefault("DSH_APPROVAL_OUTBOX", str(approval_outbox))
-        return DeepSeekHarness(
-            provider=DEFAULT_PROVIDER,
-            model=DEFAULT_MODEL,
-            api_key=api_key,
-            cwd=str(root),
-            session_root=str(sessions_root),
-            cordis=str(cordis),
-            request_timeout_seconds=240,
-            shutdown_timeout_seconds=10,
-            env={
-                "DSH_RUNTIME_MODE": "node",
-                "DSH_CWD": str(root),
-                "DSH_SESSION_ROOT": str(sessions_root),
-                "DSH_CORDIS_CONFIG": str(cordis),
-                "DSH_APPROVAL_INBOX": str(approval_inbox),
-                "DSH_APPROVAL_OUTBOX": str(approval_outbox),
-            },
-        )
+        return build_harness_client(root, cordis_config=cordis)
 
     bridge = HarnessBridge(
         client_factory,

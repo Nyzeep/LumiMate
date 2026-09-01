@@ -136,6 +136,199 @@ def test_run_failure_emits_failed_event():
     assert failed["failure"] == {"reason": "error"}
 
 
+def test_run_result_error_marks_bridge_outcome_failed():
+    class ErrorHarness(FakeHarness):
+        def run(self, *_args, **_kwargs):
+            return SimpleNamespace(finish_reason="error", final_response="", events=[])
+
+    bridge, published = make_bridge(ErrorHarness())
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="执行任务")
+
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    assert bridge.outcome("s1") == "failed"
+    assert any(event["type"] == "agent.task.failed" for event in published)
+
+
+def test_notification_failure_wins_over_inconsistent_completed_result():
+    class InconsistentHarness(FakeHarness):
+        def run(self, _prompt, session_id=None, on_notification=None):
+            if on_notification is not None and session_id:
+                on_notification(
+                    {
+                        "sessionId": session_id,
+                        "event": {
+                            "type": "turn/end",
+                            "data": {
+                                "reason": {
+                                    "kind": "error",
+                                    "error": {"code": "AUTH", "status": 401},
+                                }
+                            },
+                        },
+                    }
+                )
+            return SimpleNamespace(finish_reason="completed", final_response="ok")
+
+    bridge, published = make_bridge(InconsistentHarness())
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="执行任务")
+
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    assert bridge.outcome("s1") == "failed"
+    terminal_events = [
+        event for event in published if event["type"] in {"agent.task.completed", "agent.task.failed"}
+    ]
+    assert terminal_events == [
+        {
+            "type": "agent.task.failed",
+            "taskId": "t1",
+            "sessionId": "s1",
+            "failure": {
+                "reason": "AUTH",
+                "status": 401,
+                "message": "Authentication failed (HTTP 401)",
+            },
+        }
+    ]
+
+
+def test_terminal_deduplication_tracks_each_turn_in_a_session():
+    class TwoTurnHarness(FakeHarness):
+        def run(self, _prompt, session_id=None, on_notification=None):
+            if on_notification is not None and session_id:
+                on_notification(
+                    {
+                        "sessionId": session_id,
+                        "event": {
+                            "type": "turn/end",
+                            "data": {"reason": {"kind": "completed"}},
+                        },
+                    }
+                )
+            return SimpleNamespace(finish_reason="completed", final_response="ok")
+
+    bridge, published = make_bridge(TwoTurnHarness())
+    bridge.start()
+
+    bridge.run_task(session_id="s1", task_id="t1", goal="plan")
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    bridge.run_task(session_id="s1", task_id="t1", goal="execute")
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+
+    terminal_events = [event for event in published if event["type"] == "agent.task.completed"]
+    assert len(terminal_events) == 2
+    assert bridge.outcome("s1") == "completed"
+
+
+def test_terminal_deduplication_isolated_between_overlapping_turns():
+    class OverlappingHarness(FakeHarness):
+        def __init__(self):
+            super().__init__()
+            self.first_started = threading.Event()
+            self.second_started = threading.Event()
+            self.release = threading.Event()
+
+        def run(self, prompt, session_id=None, on_notification=None):
+            if prompt == "first":
+                self.first_started.set()
+            else:
+                self.second_started.set()
+            self.release.wait(timeout=2)
+            if on_notification is not None and session_id:
+                on_notification(
+                    {
+                        "sessionId": session_id,
+                        "event": {
+                            "type": "turn/end",
+                            "data": {"reason": {"kind": "completed"}},
+                        },
+                    }
+                )
+            return SimpleNamespace(finish_reason="completed", final_response="ok")
+
+    harness = OverlappingHarness()
+    bridge, published = make_bridge(harness)
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="first")
+    assert harness.first_started.wait(timeout=2)
+    bridge.run_task(session_id="s1", task_id="t1", goal="second")
+    assert harness.second_started.wait(timeout=2)
+
+    harness.release.set()
+    for _ in range(100):
+        terminal_events = [event for event in published if event["type"] == "agent.task.completed"]
+        if len(terminal_events) == 2:
+            break
+        threading.Event().wait(timeout=0.01)
+
+    assert len([event for event in published if event["type"] == "agent.task.completed"]) == 2
+
+
+def test_terminal_deduplication_tracks_delayed_first_turn_notification():
+    class OutOfOrderHarness(FakeHarness):
+        def __init__(self):
+            super().__init__()
+            self.first_started = threading.Event()
+            self.allow_first_to_finish = threading.Event()
+
+        def run(self, prompt, session_id=None, on_notification=None):
+            if prompt == "first":
+                self.first_started.set()
+                self.allow_first_to_finish.wait(timeout=2)
+                if on_notification is not None and session_id:
+                    on_notification(
+                        {
+                            "sessionId": session_id,
+                            "event": {
+                                "type": "turn/end",
+                                "data": {"reason": {"kind": "error"}},
+                            },
+                        }
+                    )
+                return SimpleNamespace(finish_reason="completed", final_response="stale")
+            return SimpleNamespace(finish_reason="completed", final_response="second")
+
+    harness = OutOfOrderHarness()
+    bridge, published = make_bridge(harness)
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="first")
+    assert harness.first_started.wait(timeout=2)
+    bridge.run_task(session_id="s1", task_id="t1", goal="second")
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+
+    harness.allow_first_to_finish.set()
+    for _ in range(100):
+        terminal_events = [
+            event
+            for event in published
+            if event["type"] in {"agent.task.completed", "agent.task.failed"}
+        ]
+        if len(terminal_events) == 2:
+            break
+        threading.Event().wait(timeout=0.01)
+
+    assert [event["type"] for event in terminal_events] == [
+        "agent.task.completed",
+        "agent.task.failed",
+    ]
+
+
+def test_run_exception_preserves_a_redacted_auth_failure_signal():
+    fake = FakeHarness(run_raised=RuntimeError("AUTH HTTP 401 api key: sk-test-credential"))
+    bridge, published = make_bridge(fake)
+    bridge.start()
+    bridge.run_task(session_id="s1", task_id="t1", goal="执行任务")
+
+    assert bridge.wait_for_turn("s1", timeout=2) is True
+    failed = next(event for event in published if event["type"] == "agent.task.failed")
+    assert failed["failure"] == {
+        "reason": "AUTH",
+        "status": 401,
+        "message": "Authentication failed (HTTP 401)",
+    }
+
+
 def test_close_closes_client():
     fake = FakeHarness()
     bridge, _ = make_bridge(fake)

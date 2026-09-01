@@ -1,10 +1,90 @@
-"""Harness wire 事件 → 提案 §8 Agent 事件 / TaskState 的纯映射。"""
+"""Harness wire events to proposal section 8 Agent events and TaskState."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from services.agent.events import build_agent_event
+
+
+def _safe_status(value: Any) -> int | None:
+    try:
+        status = int(value)
+    except (TypeError, ValueError):
+        return None
+    return status if 100 <= status <= 599 else None
+
+
+def _diagnostic_message(reason: str, status: int | None) -> str:
+    """Build a useful Task diagnosis from allowlisted, non-secret facts only."""
+    if reason == "AUTH":
+        return f"Authentication failed (HTTP {status})" if status else "Authentication failed"
+    if status is not None:
+        return f"Harness request failed (HTTP {status})"
+    return ""
+
+
+def _failure_payload(value: Any, *, fallback_reason: str = "error") -> dict[str, Any]:
+    """Project only structured, non-secret Harness failure facts to a Task."""
+    source = value
+    if isinstance(value, dict) and isinstance(value.get("error"), dict):
+        source = value["error"]
+
+    raw_code: Any = None
+    raw_status: Any = None
+    raw_message: Any = value if not isinstance(value, dict) else ""
+    if isinstance(source, dict):
+        raw_code = source.get("code")
+        raw_status = source.get("status")
+        raw_message = source.get("message") or ""
+
+    message_for_classification = str(raw_message or "")
+    provider_code = str(raw_code or "").strip()
+    is_auth = provider_code == "AUTH" or re.search(
+        r"\bauth(?:entication)?\b|api[_ ]?key",
+        message_for_classification,
+        re.IGNORECASE,
+    )
+
+    status = _safe_status(raw_status)
+    if status is None:
+        status_match = re.search(r"\b([45]\d{2})\b", message_for_classification)
+        status = _safe_status(status_match.group(1)) if status_match else None
+
+    reason = "AUTH" if is_auth else fallback_reason
+    if not is_auth and status is not None and 400 <= status <= 599:
+        reason = f"HTTP_{status // 100}XX"
+    failure: dict[str, Any] = {"reason": reason}
+    if status is not None:
+        failure["status"] = status
+    diagnostic = _diagnostic_message(reason, status)
+    if diagnostic:
+        failure["message"] = diagnostic
+    return failure
+
+
+def failure_from_turn_reason(reason: Any) -> dict[str, Any]:
+    """Map a public Harness turn-end reason to a redacted Task failure."""
+    return _failure_payload(reason)
+
+
+def failure_from_exception(exc: Exception) -> dict[str, Any]:
+    """Map an SDK transport exception without leaking its credentials."""
+    return _failure_payload(str(exc))
+
+
+def _failure_from_run_result(result: Any) -> dict[str, Any]:
+    events = getattr(result, "events", None)
+    if isinstance(events, list):
+        for event in reversed(events):
+            if not isinstance(event, dict) or event.get("type") != "turn/end":
+                continue
+            data = event.get("data")
+            reason = data.get("reason") if isinstance(data, dict) else None
+            if isinstance(reason, dict) and reason.get("kind") == "error":
+                return failure_from_turn_reason(reason)
+    return {"reason": "error"}
 
 
 def map_session_status(
@@ -12,7 +92,7 @@ def map_session_status(
     status: str,
     task_id: str | None = None,
 ) -> dict[str, Any]:
-    """`session.status` 通知 → `agent.session.updated` 事件。"""
+    """Map a session.status notification to agent.session.updated."""
     return build_agent_event(
         "agent.session.updated",
         task_id=task_id,
@@ -26,11 +106,17 @@ def map_session_event(
     notification: dict[str, Any],
     task_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """`session.event` 通知 → 0..n 个 §8 Agent 事件。"""
+    """Map one session.event notification to zero or more Agent events."""
+    if not isinstance(notification, dict):
+        return []
     session_id = str(notification.get("sessionId") or "")
-    event = notification.get("event") or {}
+    event = notification.get("event")
+    if not isinstance(event, dict):
+        return []
+    data = event.get("data")
+    if not isinstance(data, dict):
+        return []
     event_type = str(event.get("type") or "")
-    data = event.get("data") or {}
 
     if event_type == "tool/call":
         return [
@@ -41,7 +127,11 @@ def map_session_event(
                 toolName=str(data.get("name") or "unknown"),
                 callId=str(data.get("callId") or ""),
                 status="running",
-                arguments=str(data.get("arguments") or ""),
+                arguments=(
+                    "arguments omitted for privacy"
+                    if data.get("arguments") not in (None, "")
+                    else ""
+                ),
             )
         ]
 
@@ -58,7 +148,8 @@ def map_session_event(
         ]
 
     if event_type == "turn/end":
-        reason = (data.get("reason") or {}).get("kind")
+        turn_reason = data.get("reason")
+        reason = turn_reason.get("kind") if isinstance(turn_reason, dict) else ""
         if reason == "completed":
             return [
                 build_agent_event(
@@ -73,7 +164,7 @@ def map_session_event(
                     "agent.task.failed",
                     task_id=task_id,
                     session_id=session_id,
-                    failure={"reason": "error"},
+                    failure=failure_from_turn_reason(turn_reason),
                 )
             ]
 
@@ -84,7 +175,7 @@ def map_subagent_notification(
     notification: dict[str, Any],
     task_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """`subagent.started` / `subagent.finished` 通知：仅用于投影，不产生 §8 事件。"""
+    """Subagent notifications are projection-only and emit no section 8 event."""
     return []
 
 
@@ -93,7 +184,7 @@ def map_run_result(
     task_id: str | None = None,
     session_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """`RunResult.finish_reason` → 终态事件（completed / failed）。"""
+    """Map RunResult.finish_reason to a terminal Task event."""
     reason = getattr(result, "finish_reason", None)
     if reason == "completed":
         return [
@@ -103,15 +194,11 @@ def map_run_result(
                 session_id=session_id,
             )
         ]
-    if reason == "error":
-        return [
-            build_agent_event(
-                "agent.task.failed",
-                task_id=task_id,
-                session_id=session_id,
-                failure={"reason": "error"},
-            )
-        ]
-    return []
-
-
+    return [
+        build_agent_event(
+            "agent.task.failed",
+            task_id=task_id,
+            session_id=session_id,
+            failure=_failure_from_run_result(result),
+        )
+    ]
