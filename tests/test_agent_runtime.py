@@ -10,6 +10,26 @@ from services.agent.runtime import build_agent_service, build_harness_client, lo
 from services.agent.service import AgentService
 
 
+def _install_fake_harness(monkeypatch, harness_class) -> list[str]:
+    runtime_modes: list[str] = []
+
+    def resolve_bundled_launch_args(mode: str) -> list[str]:
+        runtime_modes.append(mode)
+        return ["node", "fake-runtime"]
+
+    monkeypatch.setitem(
+        sys.modules,
+        "deepseek_harness",
+        SimpleNamespace(DeepSeekHarness=harness_class),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "deepseek_harness_runtime",
+        SimpleNamespace(resolve_bundled_launch_args=resolve_bundled_launch_args),
+    )
+    return runtime_modes
+
+
 def test_load_api_key_from_env(monkeypatch):
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-env-test")
     assert load_api_key("C:/tmp") == "sk-env-test"
@@ -58,7 +78,7 @@ def test_build_harness_client_uses_the_public_sdk_configuration(tmp_path, monkey
         def __init__(self, **kwargs):
             captured.update(kwargs)
 
-    monkeypatch.setitem(sys.modules, "deepseek_harness", SimpleNamespace(DeepSeekHarness=FakeHarness))
+    runtime_modes = _install_fake_harness(monkeypatch, FakeHarness)
 
     client = build_harness_client(tmp_path)
 
@@ -66,6 +86,7 @@ def test_build_harness_client_uses_the_public_sdk_configuration(tmp_path, monkey
     assert captured["base_url"] == endpoint
     assert captured["cwd"] == str(tmp_path)
     assert captured["launch_args_override"]
+    assert runtime_modes == ["node"]
 
 
 def test_build_harness_client_keeps_dsh_configuration_local_to_sdk(tmp_path, monkeypatch):
@@ -86,7 +107,7 @@ def test_build_harness_client_keeps_dsh_configuration_local_to_sdk(tmp_path, mon
         def __init__(self, **kwargs):
             captured.update(kwargs)
 
-    monkeypatch.setitem(sys.modules, "deepseek_harness", SimpleNamespace(DeepSeekHarness=FakeHarness))
+    _install_fake_harness(monkeypatch, FakeHarness)
 
     build_harness_client(tmp_path)
 
@@ -116,7 +137,7 @@ def test_task_agent_passes_env_file_endpoint_to_harness(tmp_path, monkeypatch):
         def close(self) -> None:
             pass
 
-    monkeypatch.setitem(sys.modules, "deepseek_harness", SimpleNamespace(DeepSeekHarness=FakeHarness))
+    _install_fake_harness(monkeypatch, FakeHarness)
     service = build_agent_service(tmp_path, lambda _event: None)
     task = service.start_task("endpoint check", "read only", str(tmp_path))
 
