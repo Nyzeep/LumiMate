@@ -6,6 +6,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, FrozenSet, Mapping
 
+from services.agent.command_policy import (
+    ALLOWED_CHECK_COMMANDS,
+    classify_bash_command,
+)
 from services.agent.models import Grant
 
 
@@ -50,11 +54,7 @@ CATEGORY_FOR_ACTION: Mapping[str, str] = {
     "typecheck": "typecheck",
 }
 
-WHITELISTED_CHECK_COMMANDS: tuple[str, ...] = (
-    "pytest",
-    "npm run build",
-    "runtime/server.py --check",
-)
+WHITELISTED_CHECK_COMMANDS = ALLOWED_CHECK_COMMANDS
 
 HIGH_RISK_COMMAND_KEYWORDS: tuple[str, ...] = (
     "install",
@@ -92,11 +92,11 @@ def classify_action(
 ) -> RiskLevel:
     """§13 分级：读/计划类 Low；文件修改/测试类 Medium；删除/安装/网络等 High。"""
     name = (action or "").strip().lower()
+    if path and (not workspace or not _is_inside(path, workspace)):
+        return RiskLevel.HIGH
     if name in HIGH_ACTIONS:
         return RiskLevel.HIGH
     if name in MEDIUM_ACTIONS:
-        if path and workspace and not _is_inside(path, workspace):
-            return RiskLevel.HIGH
         return RiskLevel.MEDIUM
     if name in LOW_ACTIONS:
         return RiskLevel.LOW
@@ -105,10 +105,26 @@ def classify_action(
         for keyword in HIGH_RISK_COMMAND_KEYWORDS:
             if keyword in cmd:
                 return RiskLevel.HIGH
-        if any(marker in cmd for marker in WHITELISTED_CHECK_COMMANDS):
+        command_kind = classify_bash_command(cmd)
+        if command_kind == "check":
             return RiskLevel.MEDIUM
+        if command_kind == "git":
+            return RiskLevel.LOW
         return RiskLevel.HIGH
     return RiskLevel.HIGH
+
+
+def category_for_action(action: str, *, command: str | None = None) -> str:
+    """Return the Grant category represented by an authorized action."""
+    name = (action or "").strip().lower()
+    if name == "bash":
+        command_kind = classify_bash_command(command)
+        if command_kind == "check":
+            return "test"
+        if command_kind == "git":
+            return "git_status"
+        return "command"
+    return CATEGORY_FOR_ACTION.get(name, name)
 
 
 class PermissionPolicy:
@@ -152,7 +168,7 @@ class PermissionPolicy:
             return level, "allow"
         if level is RiskLevel.HIGH:
             return level, "ask"
-        category = CATEGORY_FOR_ACTION.get(action, action)
+        category = category_for_action(action, command=command)
         key = (task_id, session_id, workspace, category)
         if key in self._grants:
             return level, "allow"

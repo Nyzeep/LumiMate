@@ -262,7 +262,8 @@ def test_approve_permission_grants_medium_and_resumes(tmp_path):
 
     assert service.get_task(task.id).state == TaskState.RUNNING
     assert bridge.approval_answers == [(task.session_id, "call-1", True)]
-    assert any(e["type"] == "agent.task.tool_started" for e in published)
+    tool_event = next(e for e in published if e["type"] == "agent.task.tool_started")
+    assert tool_event["arguments"] == "arguments omitted for privacy"
 
 
 def test_second_same_category_tool_after_grant_allows(tmp_path):
@@ -297,6 +298,97 @@ def test_approve_permission_reject_cancels_task(tmp_path):
     assert bridge.approval_answers == [(task.session_id, "call-1", False)]
 
 
+def test_cancel_task_revokes_existing_grants(tmp_path):
+    service, bridge, _ = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+    service.on_bridge_event(tool_started(task))
+    service.approve_permission(
+        task.id, request_id="call-1", grant_category="file_modify", approve=True
+    )
+
+    service.cancel_task(task.id)
+
+    assert service._policy.check(
+        task_id=task.id,
+        session_id=task.session_id,
+        workspace=WORKSPACE,
+        action="write",
+    )[1] == "ask"
+
+
+def test_pause_keeps_grants_for_the_same_task(tmp_path):
+    service, bridge, _ = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+    service.on_bridge_event(tool_started(task))
+    service.approve_permission(
+        task.id, request_id="call-1", grant_category="file_modify", approve=True
+    )
+
+    service.pause_task(task.id)
+    service.on_bridge_event(
+        {
+            "type": "agent.task.cancelled",
+            "taskId": task.id,
+            "sessionId": task.session_id,
+        }
+    )
+
+    assert service.get_task(task.id).state == TaskState.PAUSED
+    assert service._policy.check(
+        task_id=task.id,
+        session_id=task.session_id,
+        workspace=WORKSPACE,
+        action="write",
+    )[1] == "allow"
+
+
+def test_tool_call_while_waiting_permission_is_rejected(tmp_path):
+    service, bridge, published = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+    service.on_bridge_event(tool_started(task, call_id="call-1"))
+    published.clear()
+
+    service.on_bridge_event(
+        tool_started(
+            task,
+            tool_name="read",
+            call_id="call-2",
+            arguments='{"file_path": "../outside.py"}',
+        )
+    )
+
+    assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
+    assert published[-1]["type"] == "agent.task.tool_finished"
+    assert published[-1]["status"] == "error"
+
+
+def test_tool_session_mismatch_is_rejected(tmp_path):
+    service, bridge, published = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+
+    service.on_bridge_event(
+        {
+            "type": "agent.task.tool_started",
+            "taskId": task.id,
+            "sessionId": "other-session",
+            "toolName": "write",
+            "callId": "call-1",
+            "arguments": '{"file_path": "a.py"}',
+        }
+    )
+
+    assert service.get_task(task.id).state == TaskState.RUNNING
+    assert published[-1]["summary"] == "工具调用 Session 与 Task 不匹配"
+
+
 def test_high_tool_always_asks_even_after_approval(tmp_path):
     service, bridge, _ = make_service(tmp_path)
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
@@ -322,6 +414,24 @@ def test_high_tool_always_asks_even_after_approval(tmp_path):
             arguments='{"file_path": "../outside.py"}',
         )
     )
+
+    assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
+
+
+def test_permission_category_must_match_the_pending_tool(tmp_path):
+    service, bridge, _ = make_service(tmp_path)
+    task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
+    complete_plan(service, bridge, task)
+    service.approve_plan(task.id, approve=True)
+    service.on_bridge_event(tool_started(task))
+
+    with pytest.raises(ValueError, match="权限类别"):
+        service.approve_permission(
+            task.id,
+            request_id="call-1",
+            grant_category="test",
+            approve=True,
+        )
 
     assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
 

@@ -41,6 +41,15 @@ def test_non_whitelisted_bash_commands_denied():
         assert is_allowed_tool("bash", {"command": command}) is False
 
 
+def test_mutating_or_composite_git_commands_are_denied():
+    for command in (
+        "git branch -D old",
+        "git status && del file.txt",
+        "git diff --output=patch.txt",
+    ):
+        assert is_allowed_tool("bash", {"command": command}) is False
+
+
 def test_bash_without_arguments_denied():
     assert is_allowed_tool("bash") is False
     assert is_allowed_tool("bash", {}) is False

@@ -1,5 +1,12 @@
 """Task Agent 受限工具集：白名单与结果规范化。"""
 
+from .authorization import (
+    PUBLIC_ARGUMENTS_REDACTION,
+    PendingTool,
+    ToolAuthorizationGate,
+    ToolCall,
+    ToolDecision,
+)
 from .normalizer import ToolProjector, parse_test_summary
 from .registry import (
     ALLOWED_CHECK_COMMANDS,
@@ -12,7 +19,12 @@ __all__ = [
     "ALLOWED_CHECK_COMMANDS",
     "ALLOWED_GIT_COMMANDS",
     "ALLOWED_TOOL_NAMES",
+    "PUBLIC_ARGUMENTS_REDACTION",
+    "PendingTool",
     "ToolProjector",
+    "ToolAuthorizationGate",
+    "ToolCall",
+    "ToolDecision",
     "is_allowed_tool",
     "parse_test_summary",
 ]

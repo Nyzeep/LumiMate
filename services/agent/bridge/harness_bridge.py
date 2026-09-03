@@ -37,6 +37,17 @@ class HarnessBridge:
         if value is not None:
             self._publish = value
 
+    @property
+    def tool_call_handler(self) -> Callable[[dict[str, Any], str], bool] | None:
+        return self._tool_call_handler
+
+    @tool_call_handler.setter
+    def tool_call_handler(
+        self,
+        value: Callable[[dict[str, Any], str], bool] | None,
+    ) -> None:
+        self._tool_call_handler = value
+
     def __init__(
         self,
         client_factory: Callable[[], Any],
@@ -51,6 +62,7 @@ class HarnessBridge:
         self._shutdown_timeout = shutdown_timeout_seconds
         self._approval_inbox = Path(approval_inbox) if approval_inbox else None
         self._tool_projector = tool_projector
+        self._tool_call_handler: Callable[[dict[str, Any], str], bool] | None = None
         self._client: Any = None
         self._threads: dict[str, threading.Thread] = {}
         self._outcomes: dict[str, str] = {}
@@ -196,11 +208,17 @@ class HarnessBridge:
             )
             self._publish_event(event, turn_number=turn_number)
             return
-        for event in map_session_event(payload, task_id=task_id):
-            self._publish_event(event, turn_number=turn_number)
         wire_event = payload.get("event")
+        wire_event_type = (
+            wire_event.get("type") if isinstance(wire_event, dict) else None
+        )
+        handled_by_tool_handler = False
+        if wire_event_type == "tool/call" and self._tool_call_handler is not None:
+            handled_by_tool_handler = self._tool_call_handler(payload, task_id)
+        if not handled_by_tool_handler:
+            for event in map_session_event(payload, task_id=task_id):
+                self._publish_event(event, turn_number=turn_number)
         if self._tool_projector is not None and isinstance(wire_event, dict):
-            wire_event_type = wire_event.get("type")
             if wire_event_type == "tool/call":
                 self._tool_projector.on_tool_call(payload)
             elif wire_event_type == "tool/result":

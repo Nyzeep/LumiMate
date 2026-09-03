@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, FrozenSet, Mapping
 
+from services.agent.command_policy import (
+    ALLOWED_CHECK_COMMANDS,
+    ALLOWED_GIT_COMMANDS,
+    classify_bash_command,
+)
+
 ALLOWED_TOOL_NAMES: FrozenSet[str] = frozenset(
     {
         "read",
@@ -17,21 +23,6 @@ ALLOWED_TOOL_NAMES: FrozenSet[str] = frozenset(
     }
 )
 
-ALLOWED_CHECK_COMMANDS: tuple[str, ...] = (
-    "pytest",
-    "npm run build",
-    "runtime/server.py --check",
-)
-
-ALLOWED_GIT_COMMANDS: tuple[str, ...] = (
-    "git status",
-    "git diff",
-    "git log",
-    "git rev-parse",
-    "git branch",
-)
-
-
 def is_allowed_tool(tool_name: str, arguments: Mapping[str, Any] | None = None) -> bool:
     """白名单校验：非白名单工具/命令直接拒绝（不进入审批）。"""
     name = (tool_name or "").strip().lower()
@@ -42,6 +33,4 @@ def is_allowed_tool(tool_name: str, arguments: Mapping[str, Any] | None = None) 
     command = str((arguments or {}).get("command") or "").strip().lower()
     if not command:
         return False
-    if any(marker in command for marker in ALLOWED_CHECK_COMMANDS):
-        return True
-    return any(command.startswith(git) for git in ALLOWED_GIT_COMMANDS)
+    return classify_bash_command(command) is not None

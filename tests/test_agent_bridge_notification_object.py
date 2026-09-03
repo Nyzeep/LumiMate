@@ -1,7 +1,10 @@
+import json
 import threading
 from types import SimpleNamespace
 
 from services.agent.bridge.harness_bridge import HarnessBridge
+from services.agent.service import AgentService
+from services.agent.store import TaskStore
 
 
 def test_run_publishes_events_from_sdk_notification_objects():
@@ -294,3 +297,77 @@ def test_bridge_ignores_malformed_notification_before_tool_projection():
     assert bridge.wait_for_turn("s1", timeout=2) is True
     assert bridge.outcome("s1") == "completed"
     assert [event["type"] for event in published] == ["agent.task.completed"]
+
+
+def test_bridge_keeps_raw_command_for_authorization_but_not_public_events(tmp_path):
+    published: list[dict] = []
+    run_count = 0
+
+    class AuthorizationHarness:
+        def start(self):
+            pass
+
+        def run(self, _prompt, session_id=None, on_notification=None):
+            nonlocal run_count
+            run_count += 1
+            if on_notification is None or session_id is None:
+                return SimpleNamespace(finish_reason="completed", final_response="ok")
+            if run_count == 1:
+                event = {
+                    "type": "turn/end",
+                    "data": {"reason": {"kind": "completed"}},
+                }
+                response = SimpleNamespace(finish_reason="completed", final_response="plan")
+            else:
+                event = {
+                    "type": "tool/call",
+                    "data": {
+                        "callId": "call-1",
+                        "name": "bash",
+                        "arguments": json.dumps(
+                            {"command": "python -m pytest tests -q"}
+                        ),
+                    },
+                }
+                response = SimpleNamespace(finish_reason="completed", final_response="ok")
+            on_notification(
+                SimpleNamespace(
+                    method="session.event",
+                    payload={"sessionId": session_id, "event": event},
+                )
+            )
+            return response
+
+        def close(self):
+            pass
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    bridge = HarnessBridge(lambda: AuthorizationHarness())
+    service = AgentService(
+        store=TaskStore(tmp_path / "tasks"),
+        sessions_root=tmp_path / "sessions",
+        bridge=bridge,
+        publisher=published.append,
+        workspace=str(workspace),
+    )
+
+    task = service.start_task("授权检查", "运行检查", str(workspace))
+    assert bridge.wait_for_turn(task.session_id, timeout=2) is True
+    assert service.get_task(task.id).state.value == "awaiting_plan_approval"
+
+    service.approve_plan(task.id, approve=True)
+    assert bridge.wait_for_turn(task.session_id, timeout=2) is True
+
+    current = service.get_task(task.id)
+    assert current.state.value == "awaiting_permission"
+    awaiting = next(
+        event
+        for event in published
+        if event["type"] == "agent.task.awaiting_permission"
+    )
+    assert awaiting["category"] == "test"
+    assert "python -m pytest" not in str(published)
+    assert not any(
+        event.get("summary") == "工具不在白名单内" for event in published
+    )

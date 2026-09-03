@@ -56,6 +56,17 @@ def test_write_inside_workspace_stays_medium():
     )
 
 
+def test_read_outside_workspace_is_high():
+    assert (
+        classify_action(
+            "read",
+            path="../outside.py",
+            workspace=r"D:\LumiMate",
+        )
+        == RiskLevel.HIGH
+    )
+
+
 def test_bash_whitelisted_check_commands_are_medium():
     for command in (
         "python -m pytest",
@@ -64,6 +75,59 @@ def test_bash_whitelisted_check_commands_are_medium():
         "pytest tests/test_x.py",
     ):
         assert classify_action("bash", command=command) == RiskLevel.MEDIUM
+
+
+def test_bash_git_read_commands_are_low():
+    for command in (
+        "git status",
+        "git diff",
+        "git log --oneline -5",
+        "git rev-parse HEAD",
+        "git branch",
+    ):
+        assert classify_action("bash", command=command) == RiskLevel.LOW
+
+
+def test_git_read_commands_do_not_need_a_grant():
+    policy = PermissionPolicy()
+    assert policy.check(
+        task_id="t1",
+        session_id="s1",
+        workspace=r"D:\LumiMate",
+        action="bash",
+        command="git status",
+    ) == (RiskLevel.LOW, "allow")
+
+
+def test_composite_bash_commands_are_high():
+    assert (
+        classify_action(
+            "bash",
+            command="git status && git branch -D old",
+        )
+        == RiskLevel.HIGH
+    )
+
+
+def test_bash_pytest_grant_uses_the_test_category():
+    policy = PermissionPolicy()
+    policy.grant(
+        task_id="t1",
+        session_id="s1",
+        workspace=r"D:\LumiMate",
+        category="test",
+    )
+
+    assert (
+        policy.check(
+            task_id="t1",
+            session_id="s1",
+            workspace=r"D:\LumiMate",
+            action="bash",
+            command="python -m pytest tests -q",
+        )[1]
+        == "allow"
+    )
 
 
 def test_bash_high_risk_commands_are_high():
