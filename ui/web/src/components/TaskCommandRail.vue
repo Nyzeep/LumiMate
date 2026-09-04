@@ -148,7 +148,7 @@ function trigger(command) {
 }
 
 .task-command-rail__primary {
-  min-width: 148px;
+  --glass-control-compact-min-inline-size: 148px;
 }
 
 .task-command-rail__danger-zone {
@@ -176,8 +176,5 @@ function trigger(command) {
     display: grid;
   }
 
-  .task-command-rail :deep(.glass-control) {
-    width: 100%;
-  }
 }
 </style>

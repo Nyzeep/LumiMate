@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
 import ActionButton from "./ActionButton.vue";
+import GlassControl from "./GlassControl.vue";
 
 describe("ActionButton", () => {
   it("preserves a hero caller's accessible action, custom attribute, and click behavior", async () => {
@@ -29,5 +30,13 @@ describe("ActionButton", () => {
     });
 
     expect(wrapper.find("svg").exists()).toBe(false);
+  });
+
+  it("forwards an explicit dense-card truncation state", () => {
+    const wrapper = mount(ActionButton, {
+      props: { label: "进入对话", truncateCopy: true }
+    });
+
+    expect(wrapper.getComponent(GlassControl).props("truncateCopy")).toBe(true);
   });
 });

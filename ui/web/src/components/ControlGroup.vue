@@ -126,7 +126,7 @@ function moveSelection(event, index) {
       :icon-path="item.iconPath"
       :accent="accent"
       :selected="isSelected(index)"
-      :block="block"
+      :block="block || orientation === 'vertical'"
       :visually-hide-copy="visuallyHideCopy"
       :selection-role="selectionRole"
       :aria-controls="selectionRole === 'tab' ? item.panelId : undefined"
@@ -149,7 +149,4 @@ function moveSelection(event, index) {
   flex-wrap: nowrap;
 }
 
-.control-group--vertical :deep(.glass-control) {
-  width: 100%;
-}
 </style>

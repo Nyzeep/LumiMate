@@ -233,17 +233,20 @@ async function resumeSession(sessionId) {
                 :label="entry.title"
                 :aria-label="`检查模型：${entry.title}`"
                 :selected="entry.selected"
+                block
                 @click="inspectNode(group.kind, entry.path)"
               >
-                <span class="model-card__status" aria-hidden="true"></span>
-                <div class="model-card__content">
-                  <strong>{{ entry.title }}</strong>
-                  <small>{{ entry.subtitle }}</small>
-                </div>
-                <div class="model-card__meta">
-                  <em>{{ modelStatusLabel(entry.status) }}</em>
-                  <div class="model-card__tags">
-                    <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
+                <div class="model-inspection-content">
+                  <span class="model-card__status" aria-hidden="true"></span>
+                  <div class="model-card__content">
+                    <strong>{{ entry.title }}</strong>
+                    <small>{{ entry.subtitle }}</small>
+                  </div>
+                  <div class="model-card__meta">
+                    <em>{{ modelStatusLabel(entry.status) }}</em>
+                    <div class="model-card__tags">
+                      <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
+                    </div>
                   </div>
                 </div>
               </GlassControl>
@@ -252,11 +255,11 @@ async function resumeSession(sessionId) {
         </div>
 
         <div class="span-12 action-row action-row--wide action-row--workbench">
-          <ActionButton label="扫描节点" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" @click="actions.scanComponents" />
-          <ActionButton label="星系选择" subtitle="Galaxy" :icon-path="ICON_PATHS.workbench" semantic="model" @click="setSubspace('galaxy')" />
-          <ActionButton label="加载模型" subtitle="Load" :icon-path="ICON_PATHS.load" tier="primary" semantic="model" @click="actions.loadModels" />
-          <ActionButton label="切换核心" subtitle="Switch" :icon-path="ICON_PATHS.switch" semantic="model" @click="actions.switchModels" />
-          <ActionButton label="释放缓存" subtitle="Release" :icon-path="ICON_PATHS.release" tier="quiet" intent="danger" semantic="system" @click="actions.releaseCache" />
+          <ActionButton label="扫描节点" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" truncate-copy @click="actions.scanComponents" />
+          <ActionButton label="星系选择" subtitle="Galaxy" :icon-path="ICON_PATHS.workbench" semantic="model" truncate-copy @click="setSubspace('galaxy')" />
+          <ActionButton label="加载模型" subtitle="Load" :icon-path="ICON_PATHS.load" tier="primary" semantic="model" truncate-copy @click="actions.loadModels" />
+          <ActionButton label="切换核心" subtitle="Switch" :icon-path="ICON_PATHS.switch" semantic="model" truncate-copy @click="actions.switchModels" />
+          <ActionButton label="释放缓存" subtitle="Release" :icon-path="ICON_PATHS.release" tier="quiet" intent="danger" semantic="system" truncate-copy @click="actions.releaseCache" />
         </div>
       </template>
 
@@ -307,6 +310,7 @@ async function resumeSession(sessionId) {
                 :key="item.id"
                 class="download-card"
                 kind="card"
+                block
                 priority="secondary"
                 accent="model"
                 :label="item.title"
@@ -314,10 +318,12 @@ async function resumeSession(sessionId) {
                 :disabled="downloadBusy || !modelIdFor(item, 'asr')"
                 @click="startDownload('asr', item)"
               >
-                <span class="download-card__orbit" aria-hidden="true"></span>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.subtitle }}</small>
-                <em>{{ providerLabel(local.providerByKind.asr) }} / {{ item.sizeLabel }}</em>
+                <div class="download-card__content">
+                  <span class="download-card__orbit" aria-hidden="true"></span>
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.subtitle }}</small>
+                  <em>{{ providerLabel(local.providerByKind.asr) }} / {{ item.sizeLabel }}</em>
+                </div>
               </GlassControl>
             </div>
           </HoloCard>
@@ -344,6 +350,7 @@ async function resumeSession(sessionId) {
                 :key="item.id"
                 class="download-card"
                 kind="card"
+                block
                 priority="secondary"
                 accent="model"
                 :label="item.title"
@@ -351,10 +358,12 @@ async function resumeSession(sessionId) {
                 :disabled="downloadBusy || !modelIdFor(item, 'llm')"
                 @click="startDownload('llm', item)"
               >
-                <span class="download-card__orbit" aria-hidden="true"></span>
-                <strong>{{ item.title }}</strong>
-                <small>{{ item.subtitle }}</small>
-                <em>{{ providerLabel(local.providerByKind.llm) }} / {{ item.sizeLabel }}</em>
+                <div class="download-card__content">
+                  <span class="download-card__orbit" aria-hidden="true"></span>
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.subtitle }}</small>
+                  <em>{{ providerLabel(local.providerByKind.llm) }} / {{ item.sizeLabel }}</em>
+                </div>
               </GlassControl>
             </div>
           </HoloCard>
@@ -389,8 +398,8 @@ async function resumeSession(sessionId) {
         </div>
 
         <div class="span-12 action-row action-row--wide action-row--workbench action-row--galaxy">
-          <ActionButton label="重新扫描" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" @click="actions.scanComponents" />
-          <ActionButton label="返回核心舱" subtitle="Core" :icon-path="ICON_PATHS.workbench" semantic="model" @click="setSubspace('core')" />
+          <ActionButton label="重新扫描" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" truncate-copy @click="actions.scanComponents" />
+          <ActionButton label="返回核心舱" subtitle="Core" :icon-path="ICON_PATHS.workbench" semantic="model" truncate-copy @click="setSubspace('core')" />
           <ActionButton
             v-if="downloadBusy"
             label="取消下载"
@@ -399,6 +408,7 @@ async function resumeSession(sessionId) {
             tier="quiet"
             intent="danger"
             semantic="system"
+            truncate-copy
             @click="actions.cancelModelDownload"
           />
         </div>
@@ -557,13 +567,10 @@ async function resumeSession(sessionId) {
   padding-left: 0;
 }
 
-.agent-session-row.glass-control {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+.agent-session-row {
+  --glass-control-justify-content: flex-start;
+  --glass-control-text-align: left;
   margin-bottom: 0.5rem;
-  text-align: left;
 }
 
 @media (max-width: 900px) {

@@ -167,16 +167,6 @@
   --glass-control-card-gap: 10px;
 }
 
-.action-row--home .glass-control__copy {
-  min-width: 0;
-}
-
-.action-row--home .glass-control__copy strong,
-.action-row--home .glass-control__copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .scene-panel--loading .scene-grid {
   align-content: start;
@@ -205,11 +195,8 @@
   --glass-control-card-min-height: 82px;
   --glass-control-card-padding: 10px 16px 10px 12px;
   --glass-control-card-gap: 10px;
-  border-radius: 22px;
-}
-
-.action-row--loading .glass-control__copy strong {
-  font-size: var(--text-body);
+  --glass-control-radius: 22px;
+  --glass-control-label-font-size: var(--text-body);
 }
 
 .scene-ambient--home,
@@ -260,10 +247,7 @@
   --glass-control-card-min-height: 68px;
   --glass-control-card-padding: 9px 12px 9px 9px;
   --glass-control-card-gap: 8px;
-}
-
-.chat-actions--dock .glass-control__copy strong {
-  font-size: var(--text-body-compact);
+  --glass-control-label-font-size: var(--text-body-compact);
 }
 
 .chat-stream {
@@ -447,8 +431,8 @@
 }
 
 .scene-panel--workbench .model-inspection-control {
-  min-height: 86px;
-  padding: 12px 14px;
+  --glass-control-compact-min-block-size: 86px;
+  --glass-control-compact-padding: 12px 14px;
 }
 
 .scene-panel--workbench .model-card__tags span {
@@ -505,21 +489,19 @@
   --glass-control-card-min-height: 78px;
   --glass-control-card-padding: 10px 14px 10px 10px;
   --glass-control-card-gap: 8px;
-  border-radius: 20px;
-}
-
-.action-row--workbench .glass-control__copy {
-  min-width: 0;
-}
-
-.action-row--workbench .glass-control__copy strong,
-.action-row--workbench .glass-control__copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  --glass-control-radius: 20px;
 }
 
 .workbench-subspace-switch {
+  --glass-control-compact-min-inline-size: 132px;
+  --glass-control-compact-padding: 10px 16px;
+  --glass-control-radius: var(--radius-pill);
+  --glass-control-text-align: left;
+  --glass-control-label-font-size: var(--text-body);
+  --glass-control-subtitle-font-family: var(--font-mono);
+  --glass-control-subtitle-font-size: var(--text-status);
+  --glass-control-subtitle-letter-spacing: var(--tracking-mono);
+  --glass-control-subtitle-text-transform: uppercase;
   display: inline-flex;
   gap: 10px;
   justify-self: start;
@@ -531,31 +513,16 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
-.workbench-subspace-switch .glass-control {
-  min-width: 132px;
-  padding: 10px 16px;
-  border-radius: var(--radius-pill);
-  text-align: left;
-}
-
-.provider-switch .glass-control {
-  min-width: 54px;
-  min-height: 38px;
-  padding: 8px 10px;
-  border-radius: var(--radius-pill);
-  text-align: center;
-}
-
-.workbench-subspace-switch .glass-control__copy strong {
-  font-size: var(--text-body);
-}
-
-.workbench-subspace-switch .glass-control__copy small,
-.provider-switch .glass-control__copy strong {
-  font-family: var(--font-mono);
-  font-size: var(--text-status);
-  letter-spacing: var(--tracking-mono);
-  text-transform: uppercase;
+.provider-switch {
+  --glass-control-compact-min-inline-size: 54px;
+  --glass-control-compact-min-block-size: 38px;
+  --glass-control-compact-padding: 8px 10px;
+  --glass-control-radius: var(--radius-pill);
+  --glass-control-text-align: center;
+  --glass-control-label-font-family: var(--font-mono);
+  --glass-control-label-font-size: var(--text-status);
+  --glass-control-label-letter-spacing: var(--tracking-mono);
+  --glass-control-label-text-transform: uppercase;
 }
 
 .component-status-list,
@@ -654,32 +621,25 @@
 }
 
 .download-card {
-  position: relative;
-  display: grid;
-  gap: 8px;
-  min-height: 148px;
-  padding: 18px 18px 18px 58px;
-  border: var(--border-hairline) solid rgba(255, 208, 162, 0.12);
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 12% 50%, rgba(255, 182, 118, 0.1), transparent 26%),
-    rgba(255, 255, 255, 0.024);
-  color: var(--color-text);
-  text-align: left;
-  overflow: hidden;
-  transition: opacity var(--duration-sm) var(--ease-standard), transform var(--duration-sm) var(--ease-standard);
+  --glass-control-card-min-height: 148px;
+  --glass-control-card-padding: 18px;
+  --glass-control-radius: 18px;
 }
 
-.download-card:disabled {
-  cursor: not-allowed;
-  opacity: 0.52;
+.download-card__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding-left: 40px;
 }
 
 .download-card__orbit {
   position: absolute;
   z-index: 1;
   top: 50%;
-  left: 18px;
+  left: 0;
   width: 28px;
   aspect-ratio: 1;
   border: var(--border-hairline) solid rgba(255, 208, 162, 0.4);
@@ -696,25 +656,18 @@
   content: "";
 }
 
-.download-card > strong,
-.download-card > small,
-.download-card > em {
-  position: relative;
-  z-index: 1;
-}
-
-.download-card strong {
+.download-card__content strong {
   font-size: var(--text-body);
   font-weight: 300;
 }
 
-.download-card small {
+.download-card__content small {
   color: var(--color-muted);
   font-size: var(--text-status);
   line-height: 1.7;
 }
 
-.download-card em {
+.download-card__content em {
   color: var(--color-dim);
   font-family: var(--font-mono);
   font-size: 10px;
@@ -831,18 +784,19 @@
 }
 
 .model-inspection-control {
+  --glass-control-compact-padding: 16px;
+  --glass-control-radius: 14px;
+  --glass-control-justify-content: flex-start;
+  --glass-control-text-align: left;
+}
+
+.model-inspection-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr) auto;
   gap: var(--space-3);
-  padding: 16px;
-  border-radius: 14px;
-  text-align: left;
-  overflow: hidden;
-}
-
-.model-inspection-control > * {
-  position: relative;
-  z-index: 1;
+  width: 100%;
 }
 
 .model-card__content {
@@ -940,19 +894,14 @@
 }
 
 .mode-pills {
+  --glass-control-compact-min-inline-size: 88px;
+  --glass-control-compact-min-block-size: 36px;
+  --glass-control-compact-padding: 0 16px;
+  --glass-control-radius: var(--radius-pill);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin: 22px 0;
-}
-
-.mode-pills .glass-control {
-  min-width: 88px;
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: var(--radius-pill);
-  color: var(--color-muted);
-  overflow: hidden;
 }
 
 .about-metrics {

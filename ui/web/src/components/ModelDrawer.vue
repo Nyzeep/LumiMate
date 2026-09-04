@@ -119,6 +119,11 @@ watch(
   --glass-control-compact-padding: 10px 14px;
   --glass-control-radius: 12px;
   --glass-control-justify-content: flex-start;
+  --glass-control-label-font-size: var(--text-meta);
+  --glass-control-subtitle-font-family: var(--font-mono);
+  --glass-control-subtitle-font-size: var(--text-status);
+  --glass-control-subtitle-letter-spacing: var(--tracking-mono);
+  --glass-control-subtitle-text-transform: uppercase;
   display: grid;
   gap: 10px;
   margin-top: 24px;

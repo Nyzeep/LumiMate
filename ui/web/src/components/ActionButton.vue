@@ -37,6 +37,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  truncateCopy: {
+    type: Boolean,
+    default: false
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -62,6 +66,7 @@ const selected = computed(() => (props.active ? true : null));
     :disabled="disabled"
     :selected="selected"
     :block="block"
+    :truncate-copy="truncateCopy"
     @click="emit('click', $event)"
   />
 </template>
