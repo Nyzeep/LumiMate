@@ -525,7 +525,13 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
-.workbench-subspace-switch button,
+.workbench-subspace-switch .glass-control {
+  min-width: 132px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  text-align: left;
+}
+
 .provider-switch button {
   position: relative;
   display: grid;
@@ -540,7 +546,6 @@
   overflow: hidden;
 }
 
-.workbench-subspace-switch button::after,
 .provider-switch button::after {
   position: absolute;
   inset: 0;
@@ -551,25 +556,20 @@
   transition: opacity var(--duration-sm) var(--ease-standard);
 }
 
-.workbench-subspace-switch button.is-active,
 .provider-switch button.is-active {
   color: var(--color-text);
 }
 
-.workbench-subspace-switch button.is-active::after,
-.workbench-subspace-switch button:hover::after,
 .provider-switch button.is-active::after,
 .provider-switch button:hover::after {
   opacity: 1;
 }
 
-.workbench-subspace-switch span {
-  position: relative;
-  z-index: 1;
+.workbench-subspace-switch .glass-control__copy strong {
   font-size: var(--text-body);
 }
 
-.workbench-subspace-switch small,
+.workbench-subspace-switch .glass-control__copy small,
 .provider-switch button {
   font-family: var(--font-mono);
   font-size: var(--text-status);
@@ -962,7 +962,7 @@
   margin: 22px 0;
 }
 
-.mode-pills button {
+.mode-pills .glass-control {
   min-width: 88px;
   min-height: 36px;
   padding: 0 16px;

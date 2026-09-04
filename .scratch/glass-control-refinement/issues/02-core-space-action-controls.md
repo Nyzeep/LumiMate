@@ -17,3 +17,4 @@
 
 Formal spec: doc/proposals/2026-09-04-glass-control-refinement.md
 - 2026-09-04: Migrated ActionButton and OrbitalIconButton as thin GlassControl adapters. Browser geometry checks covered 1440×900, 1280×720, 980×720, and 860×720; compact desktop reflows keep Chat and Companion controls inside the clipped scene viewport, while the narrow layout retains vertical scrolling. `npm test` passed 10 tests and `npm run build` passed.
+- 2026-09-04 follow-up after two-axis review: marked Workbench release, cancel, and reject actions as quiet danger intent; Tauri/WebView2 and reduced-motion rendering remain final Ticket 06 acceptance work.

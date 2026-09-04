@@ -52,6 +52,11 @@ const props = defineProps({
     type: Boolean,
     default: null
   },
+  selectionRole: {
+    type: String,
+    default: "button",
+    validator: (value) => ["button", "tab", "radio"].includes(value)
+  },
   ariaLabel: {
     type: String,
     default: ""
@@ -88,9 +93,12 @@ function activate(event) {
       'glass-control--accent-' + resolvedAccent,
       { 'glass-control--block': block, 'has-glyph': Boolean(iconPath), 'is-selected': selected === true }
     ]"
+    :role="selectionRole === 'button' ? undefined : selectionRole"
     :aria-label="accessibleLabel"
     :aria-disabled="disabled ? 'true' : undefined"
-    :aria-pressed="selected === null ? undefined : String(selected)"
+    :aria-pressed="selectionRole === 'button' && selected !== null ? String(selected) : undefined"
+    :aria-selected="selectionRole === 'tab' ? String(selected === true) : undefined"
+    :aria-checked="selectionRole === 'radio' ? String(selected === true) : undefined"
     :disabled="disabled"
     :data-kind="kind"
     :data-priority="priority"

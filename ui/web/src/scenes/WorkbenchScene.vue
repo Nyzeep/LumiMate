@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, watch } from "vue";
 import ActionButton from "../components/ActionButton.vue";
+import ControlGroup from "../components/ControlGroup.vue";
 import HoloCard from "../components/HoloCard.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
 import TechText from "../components/TechText.vue";
@@ -13,6 +14,12 @@ const props = defineProps({
   view: { type: Object, required: true },
   actions: { type: Object, required: true }
 });
+
+const subspaces = [
+  { id: "core", label: "核心舱", subtitle: "Core Chamber" },
+  { id: "galaxy", label: "星系选择", subtitle: "Model Galaxy" },
+  { id: "agent", label: "任务舱", subtitle: "Task Chamber" }
+];
 
 const local = reactive({
   subspace: "core",
@@ -165,20 +172,15 @@ async function resumeSession(sessionId) {
   >
     <div class="scene-ambient scene-ambient--workbench" aria-hidden="true"></div>
     <div class="scene-grid">
-      <div class="span-12 workbench-subspace-switch">
-        <button type="button" :class="{ 'is-active': local.subspace === 'core' }" @click.prevent="setSubspace('core')">
-          <span>核心舱</span>
-          <small>Core Chamber</small>
-        </button>
-        <button type="button" :class="{ 'is-active': local.subspace === 'galaxy' }" @click.prevent="setSubspace('galaxy')">
-          <span>星系选择</span>
-          <small>Model Galaxy</small>
-        </button>
-        <button type="button" :class="{ 'is-active': local.subspace === 'agent' }" @click.prevent="setSubspace('agent')">
-          <span>任务舱</span>
-          <small>Task Chamber</small>
-        </button>
-      </div>
+      <ControlGroup
+        class="span-12 workbench-subspace-switch"
+        :items="subspaces"
+        :selected-id="local.subspace"
+        selection-role="radio"
+        accent="model"
+        aria-label="工作台子空间"
+        @select="setSubspace"
+      />
 
       <template v-if="local.subspace === 'core'">
         <div class="span-4 scene-copy">
@@ -298,7 +300,7 @@ async function resumeSession(sessionId) {
           <ActionButton label="星系选择" subtitle="Galaxy" :icon-path="ICON_PATHS.workbench" semantic="model" @click="setSubspace('galaxy')" />
           <ActionButton label="加载模型" subtitle="Load" :icon-path="ICON_PATHS.load" tier="primary" semantic="model" @click="actions.loadModels" />
           <ActionButton label="切换核心" subtitle="Switch" :icon-path="ICON_PATHS.switch" semantic="model" @click="actions.switchModels" />
-          <ActionButton label="释放缓存" subtitle="Release" :icon-path="ICON_PATHS.release" semantic="system" @click="actions.releaseCache" />
+          <ActionButton label="释放缓存" subtitle="Release" :icon-path="ICON_PATHS.release" tier="quiet" intent="danger" semantic="system" @click="actions.releaseCache" />
         </div>
       </template>
 
@@ -420,6 +422,8 @@ async function resumeSession(sessionId) {
             label="取消下载"
             subtitle="Cancel"
             :icon-path="ICON_PATHS.release"
+            tier="quiet"
+            intent="danger"
             semantic="system"
             @click="actions.cancelModelDownload"
           />
@@ -449,14 +453,14 @@ async function resumeSession(sessionId) {
               <p>计划待确认</p>
               <div class="action-row action-row--agent">
                 <ActionButton label="确认计划" subtitle="Approve" tier="primary" semantic="model" @click="approvePlan(true)" />
-                <ActionButton label="拒绝计划" subtitle="Reject" semantic="system" @click="approvePlan(false)" />
+                <ActionButton label="拒绝计划" subtitle="Reject" tier="quiet" intent="danger" semantic="system" @click="approvePlan(false)" />
               </div>
             </div>
             <div v-if="view.agent.currentTask.permission" class="agent-permission-card">
               <p>等待权限：{{ view.agent.currentTask.permission.category }}（{{ view.agent.currentTask.permission.toolName }}）</p>
               <div class="action-row action-row--agent">
                 <ActionButton label="允许" subtitle="Allow" tier="primary" semantic="model" @click="approvePermission(true)" />
-                <ActionButton label="拒绝" subtitle="Reject" semantic="system" @click="approvePermission(false)" />
+                <ActionButton label="拒绝" subtitle="Reject" tier="quiet" intent="danger" semantic="system" @click="approvePermission(false)" />
               </div>
             </div>
             <div v-if="view.agent.currentTask.failure" class="agent-failure-card">
@@ -465,7 +469,7 @@ async function resumeSession(sessionId) {
             <div class="action-row action-row--agent">
               <ActionButton label="暂停" subtitle="Pause" semantic="system" @click="pauseTask" />
               <ActionButton label="恢复" subtitle="Resume" semantic="model" @click="resumeTask" />
-              <ActionButton label="取消" subtitle="Cancel" semantic="system" @click="cancelTask" />
+              <ActionButton label="取消" subtitle="Cancel" tier="quiet" intent="danger" semantic="system" @click="cancelTask" />
             </div>
           </HoloCard>
 

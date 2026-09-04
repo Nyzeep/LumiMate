@@ -354,11 +354,6 @@
   transform: rotate(18deg);
 }
 
-.rail-nav__button.is-active .rail-glyph__rotor,
-.rail-nav__group-button.is-active .rail-glyph__rotor {
-  animation: lumi-orbit calc(var(--motion-orbit) * 1.25) linear infinite;
-}
-
 .rail-nav__button:hover .rail-glyph,
 .rail-nav__button.is-active .rail-glyph,
 .rail-nav__group-button:hover .rail-glyph,
