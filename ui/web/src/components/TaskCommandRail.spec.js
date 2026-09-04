@@ -29,6 +29,17 @@ describe("TaskCommandRail", () => {
     expect(wrapper.emitted("permission-decision")).toEqual([[true], [false]]);
   });
 
+  it("keeps a recovering permission task safely cancellable without inventing a decision", () => {
+    const wrapper = mount(TaskCommandRail, {
+      props: { task: { state: "awaiting_permission" }, stateLabel: "等待权限" }
+    });
+
+    const rail = wrapper.get('[aria-label="任务命令"]');
+    expect(rail.text()).toContain("权限请求详情正在恢复");
+    expect(rail.find('button[aria-label="允许"]').exists()).toBe(false);
+    expect(rail.get('button[aria-label="危险操作：取消任务"]')).toBeTruthy();
+  });
+
   it("favors a running state over a stale permission payload", () => {
     const wrapper = mount(TaskCommandRail, {
       props: { task: { state: "running", permission: { category: "filesystem" } }, stateLabel: "运行中" }

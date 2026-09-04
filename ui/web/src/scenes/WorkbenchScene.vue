@@ -435,12 +435,19 @@ async function resumeSession(sessionId) {
           <TechText as="p" tone="muted">TASK CHAMBER / 任务舱</TechText>
           <h2 class="scene-heading scene-heading--medium">受控任务</h2>
           <p class="scene-summary">让 Task Agent 在固定工作区内执行受控开发任务；计划与权限始终由你确认。</p>
-          <div v-if="!view.agent.currentTask" class="agent-start-form">
+          <div class="agent-start-form">
             <input v-model="local.agentTitle" class="agent-input" placeholder="任务标题" />
             <textarea v-model="local.agentGoal" class="agent-input" rows="3" placeholder="任务目标（例如：让 pytest 全绿）"></textarea>
-            <ActionButton label="发起任务" subtitle="Start" :icon-path="ICON_PATHS.workbench" tier="primary" semantic="model" @click="startAgentTask" />
+            <ActionButton
+              label="发起任务"
+              subtitle="Start"
+              :icon-path="ICON_PATHS.workbench"
+              :tier="view.agent.currentTask ? 'secondary' : 'primary'"
+              semantic="model"
+              @click="startAgentTask"
+            />
           </div>
-          <p v-else class="panel-note">当前任务已占用命令栏；请先阅读证据，再决定下一步。</p>
+          <p v-if="view.agent.currentTask" class="panel-note">当前任务拥有主命令；新任务仍可作为次级操作发起。</p>
         </div>
 
         <div class="span-8 agent-panel">
@@ -455,17 +462,6 @@ async function resumeSession(sessionId) {
               <p>失败原因：{{ view.agent.currentTask.failure.reason }}</p>
             </div>
           </HoloCard>
-
-          <TaskCommandRail
-            v-if="view.agent.currentTask"
-            :task="view.agent.currentTask"
-            :state-label="agentStateLabel(view.agent.currentTask.state)"
-            @plan-decision="approvePlan"
-            @permission-decision="approvePermission"
-            @pause="pauseTask"
-            @resume="resumeTask"
-            @cancel="cancelTask"
-          />
 
           <HoloCard v-else class="agent-empty-card">
             <p class="scene-kicker">空态</p>
@@ -495,6 +491,17 @@ async function resumeSession(sessionId) {
               </div>
             </div>
           </HoloCard>
+
+          <TaskCommandRail
+            v-if="view.agent.currentTask"
+            :task="view.agent.currentTask"
+            :state-label="agentStateLabel(view.agent.currentTask.state)"
+            @plan-decision="approvePlan"
+            @permission-decision="approvePermission"
+            @pause="pauseTask"
+            @resume="resumeTask"
+            @cancel="cancelTask"
+          />
 
           <HoloCard class="agent-sessions-card">
             <p class="scene-kicker">最近 Session</p>

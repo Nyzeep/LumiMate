@@ -41,6 +41,13 @@ const primaryCommand = computed(() => {
   return null;
 });
 
+const statusCaption = computed(() => {
+  if (props.task?.state === "awaiting_permission" && !props.task.permission) {
+    return "权限请求详情正在恢复";
+  }
+  return primaryCommand.value?.caption || props.stateLabel || "等待任务状态";
+});
+
 const dangerCommand = computed(() => {
   const task = props.task;
   if (!task) {
@@ -51,6 +58,9 @@ const dangerCommand = computed(() => {
   }
   if (task.state === "awaiting_plan_approval") {
     return { event: "plan-decision", value: false, label: "拒绝计划", subtitle: "Reject", caption: "拒绝后不会开始任务" };
+  }
+  if (task.state === "awaiting_permission") {
+    return { event: "cancel", label: "取消任务", subtitle: "Cancel", caption: "权限详情正在恢复时仍可安全取消任务" };
   }
   if (["draft", "planning", "running", "paused"].includes(task.state)) {
     return { event: "cancel", label: "取消任务", subtitle: "Cancel", caption: "取消会结束当前受控任务" };
@@ -74,7 +84,7 @@ function trigger(command) {
   <section class="task-command-rail" aria-label="任务命令">
     <div class="task-command-rail__context">
       <p class="scene-kicker">当前命令</p>
-      <strong>{{ primaryCommand?.caption || stateLabel || "等待任务状态" }}</strong>
+      <strong>{{ statusCaption }}</strong>
       <small>{{ stateLabel }}</small>
     </div>
 
