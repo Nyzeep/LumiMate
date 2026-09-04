@@ -4,6 +4,7 @@ import ActionButton from "../components/ActionButton.vue";
 import ControlGroup from "../components/ControlGroup.vue";
 import HoloCard from "../components/HoloCard.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
+import TaskCommandRail from "../components/TaskCommandRail.vue";
 import TechText from "../components/TechText.vue";
 import { ICON_PATHS } from "../app/sceneRegistry";
 
@@ -434,11 +435,12 @@ async function resumeSession(sessionId) {
           <TechText as="p" tone="muted">TASK CHAMBER / 任务舱</TechText>
           <h2 class="scene-heading scene-heading--medium">受控任务</h2>
           <p class="scene-summary">让 Task Agent 在固定工作区内执行受控开发任务；计划与权限始终由你确认。</p>
-          <div class="agent-start-form">
+          <div v-if="!view.agent.currentTask" class="agent-start-form">
             <input v-model="local.agentTitle" class="agent-input" placeholder="任务标题" />
             <textarea v-model="local.agentGoal" class="agent-input" rows="3" placeholder="任务目标（例如：让 pytest 全绿）"></textarea>
             <ActionButton label="发起任务" subtitle="Start" :icon-path="ICON_PATHS.workbench" tier="primary" semantic="model" @click="startAgentTask" />
           </div>
+          <p v-else class="panel-note">当前任务已占用命令栏；请先阅读证据，再决定下一步。</p>
         </div>
 
         <div class="span-8 agent-panel">
@@ -449,29 +451,21 @@ async function resumeSession(sessionId) {
             <ul v-if="view.agent.currentTask.plan.length" class="agent-plan-list">
               <li v-for="(step, index) in view.agent.currentTask.plan" :key="index">{{ step.summary || step }}</li>
             </ul>
-            <div v-if="view.agent.currentTask.state === 'awaiting_plan_approval'" class="agent-permission-card">
-              <p>计划待确认</p>
-              <div class="action-row action-row--agent">
-                <ActionButton label="确认计划" subtitle="Approve" tier="primary" semantic="model" @click="approvePlan(true)" />
-                <ActionButton label="拒绝计划" subtitle="Reject" tier="quiet" intent="danger" semantic="system" @click="approvePlan(false)" />
-              </div>
-            </div>
-            <div v-if="view.agent.currentTask.permission" class="agent-permission-card">
-              <p>等待权限：{{ view.agent.currentTask.permission.category }}（{{ view.agent.currentTask.permission.toolName }}）</p>
-              <div class="action-row action-row--agent">
-                <ActionButton label="允许" subtitle="Allow" tier="primary" semantic="model" @click="approvePermission(true)" />
-                <ActionButton label="拒绝" subtitle="Reject" tier="quiet" intent="danger" semantic="system" @click="approvePermission(false)" />
-              </div>
-            </div>
             <div v-if="view.agent.currentTask.failure" class="agent-failure-card">
               <p>失败原因：{{ view.agent.currentTask.failure.reason }}</p>
             </div>
-            <div class="action-row action-row--agent">
-              <ActionButton label="暂停" subtitle="Pause" semantic="system" @click="pauseTask" />
-              <ActionButton label="恢复" subtitle="Resume" semantic="model" @click="resumeTask" />
-              <ActionButton label="取消" subtitle="Cancel" tier="quiet" intent="danger" semantic="system" @click="cancelTask" />
-            </div>
           </HoloCard>
+
+          <TaskCommandRail
+            v-if="view.agent.currentTask"
+            :task="view.agent.currentTask"
+            :state-label="agentStateLabel(view.agent.currentTask.state)"
+            @plan-decision="approvePlan"
+            @permission-decision="approvePermission"
+            @pause="pauseTask"
+            @resume="resumeTask"
+            @cancel="cancelTask"
+          />
 
           <HoloCard v-else class="agent-empty-card">
             <p class="scene-kicker">空态</p>
@@ -561,24 +555,12 @@ async function resumeSession(sessionId) {
   font-size: 0.85rem;
 }
 
-.agent-permission-card,
 .agent-failure-card {
   margin: 0.75rem 0;
   padding: 0.75rem;
+  border: 1px solid rgba(220, 90, 90, 0.3);
   border-radius: 0.6rem;
-  background: rgba(247, 200, 115, 0.08);
-  border: 1px solid rgba(247, 200, 115, 0.25);
-}
-
-.agent-failure-card {
   background: rgba(220, 90, 90, 0.08);
-  border-color: rgba(220, 90, 90, 0.3);
-}
-
-.action-row--agent {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
 }
 
 .agent-trail-grid {
