@@ -86,7 +86,7 @@ function activate(event) {
       'glass-control--' + priority,
       'glass-control--' + intent,
       'glass-control--accent-' + resolvedAccent,
-      { 'glass-control--block': block, 'is-selected': selected === true }
+      { 'glass-control--block': block, 'has-glyph': Boolean(iconPath), 'is-selected': selected === true }
     ]"
     :aria-label="accessibleLabel"
     :aria-disabled="disabled ? 'true' : undefined"
@@ -194,12 +194,17 @@ function activate(event) {
 }
 
 .glass-control--card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  justify-content: stretch;
+  justify-content: flex-start;
   min-width: min(100%, 220px);
-  min-height: 104px;
-  padding: 14px 18px 14px 14px;
+  min-height: var(--glass-control-card-min-height, 104px);
+  padding: var(--glass-control-card-padding, 14px 18px 14px 14px);
+}
+
+.glass-control--card.has-glyph {
+  display: grid;
+  grid-template-columns: var(--glass-control-card-glyph-track-size, var(--glass-control-card-glyph-size, 58px)) minmax(0, 1fr);
+  justify-content: stretch;
+  gap: var(--glass-control-card-gap, 12px);
 }
 
 .glass-control--block {
@@ -208,8 +213,8 @@ function activate(event) {
 
 .glass-control--icon {
   display: grid;
-  min-width: 68px;
-  min-height: 68px;
+  min-width: var(--glass-control-icon-min-inline-size, 120px);
+  min-height: var(--glass-control-icon-min-block-size, 94px);
   place-items: center;
   text-align: center;
 }
@@ -238,10 +243,13 @@ function activate(event) {
 }
 
 .glass-control--quiet {
-  min-height: 38px;
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.025);
   color: var(--color-muted);
+}
+
+.glass-control--compact.glass-control--quiet {
+  min-height: 38px;
 }
 
 .glass-control--danger {
@@ -291,12 +299,12 @@ function activate(event) {
 }
 
 .glass-control--card .glass-control__glyph {
-  width: 58px;
+  width: var(--glass-control-card-glyph-size, 58px);
 }
 
 .glass-control__glyph svg {
-  width: 58%;
-  height: 58%;
+  width: var(--glass-control-glyph-svg-size, 58%);
+  height: var(--glass-control-glyph-svg-size, 58%);
   fill: none;
   stroke: rgba(var(--glass-control-accent), 0.98);
   stroke-width: 1.2;
@@ -332,6 +340,14 @@ function activate(event) {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.7px;
+}
+
+.glass-control--icon .glass-control__copy strong {
+  color: var(--color-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: var(--tracking-mono);
 }
 
 .glass-control__intent-label {

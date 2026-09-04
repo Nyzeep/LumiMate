@@ -31,7 +31,7 @@ LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但�
 
 ## Implementation Decisions
 
-1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态，以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）；内部处理玻璃表面、边缘高光、柔光、焦点、按下和减少动效。
+1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态，以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）；内部处理玻璃表面、边缘高光、柔光、焦点、按下和减少动效。仅在真实场景几何确有差异时，场景可通过 card 的 glyph track、glyph、glyph SVG、min-height、padding、gap，或 icon 的最小 inline/block size CSS 自定义属性调整尺寸；业务状态和交互不通过这些样式属性表达。
 2. 建立仅用于互斥选择的 ControlGroup 模块，覆盖 tab 与 radio 所需的选中状态、键盘与 ARIA 语义。RailNav 保留导航职责，并采用当前项语义，不伪装成普通 radio 组。
 3. 现有行动卡和轨道图标控件变为 GlassControl 的薄适配层。复杂业务内容保留其现有结构，只接入统一呈现与状态约定，避免按场景新增浅层按钮包装。
 4. 场景色只能作为弱上下文强调；priority 表示当前区域的重要性，intent 表示中性或危险。拒绝、取消、清空、释放等操作不得以 primary-neutral 组合出现，也不得只依赖颜色传达风险。

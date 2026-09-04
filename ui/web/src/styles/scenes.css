@@ -120,6 +120,12 @@
 }
 
 .hero-cta {
+  --glass-control-card-glyph-track-size: 78px;
+  --glass-control-card-glyph-size: 64px;
+  --glass-control-glyph-svg-size: 40px;
+  --glass-control-card-min-height: 126px;
+  --glass-control-card-padding: 14px 20px 14px 14px;
+  --glass-control-card-gap: var(--space-3);
   width: min(100%, 460px);
 }
 
@@ -152,27 +158,21 @@
   min-width: 0;
 }
 
-.action-row--home .action-button {
-  grid-template-columns: 62px minmax(0, 1fr);
-  min-height: clamp(88px, 10.8vh, 108px);
-  padding: 12px 16px 12px 12px;
+.action-row--home .glass-control--card {
+  --glass-control-card-glyph-track-size: 62px;
+  --glass-control-card-glyph-size: 52px;
+  --glass-control-glyph-svg-size: 34px;
+  --glass-control-card-min-height: clamp(88px, 10.8vh, 108px);
+  --glass-control-card-padding: 12px 16px 12px 12px;
+  --glass-control-card-gap: 10px;
 }
 
-.action-row--home .action-button__glyph {
-  width: 52px;
-}
-
-.action-row--home .action-button__glyph svg {
-  width: 34px;
-  height: 34px;
-}
-
-.action-row--home .action-button__copy {
+.action-row--home .glass-control__copy {
   min-width: 0;
 }
 
-.action-row--home .action-button__copy strong,
-.action-row--home .action-button__copy small {
+.action-row--home .glass-control__copy strong,
+.action-row--home .glass-control__copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -198,23 +198,17 @@
   padding-bottom: 4px;
 }
 
-.action-row--loading .action-button {
-  grid-template-columns: 60px minmax(0, 1fr);
-  min-height: 82px;
-  padding: 10px 16px 10px 12px;
+.action-row--loading .glass-control--card {
+  --glass-control-card-glyph-track-size: 60px;
+  --glass-control-card-glyph-size: 50px;
+  --glass-control-glyph-svg-size: 32px;
+  --glass-control-card-min-height: 82px;
+  --glass-control-card-padding: 10px 16px 10px 12px;
+  --glass-control-card-gap: 10px;
   border-radius: 22px;
 }
 
-.action-row--loading .action-button__glyph {
-  width: 50px;
-}
-
-.action-row--loading .action-button__glyph svg {
-  width: 32px;
-  height: 32px;
-}
-
-.action-row--loading .action-button__copy strong {
+.action-row--loading .glass-control__copy strong {
   font-size: var(--text-body);
 }
 
@@ -251,6 +245,25 @@
   display: grid;
   align-content: start;
   gap: 18px;
+}
+
+.chat-actions--dock {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.chat-actions--dock .glass-control--card {
+  --glass-control-card-glyph-track-size: 46px;
+  --glass-control-card-glyph-size: 38px;
+  --glass-control-glyph-svg-size: 24px;
+  --glass-control-card-min-height: 68px;
+  --glass-control-card-padding: 9px 12px 9px 9px;
+  --glass-control-card-gap: 8px;
+}
+
+.chat-actions--dock .glass-control__copy strong {
+  font-size: var(--text-body-compact);
 }
 
 .chat-stream {
@@ -393,6 +406,12 @@
   gap: 18px;
 }
 
+.companion-tools .glass-control--icon {
+  --glass-control-icon-min-inline-size: 120px;
+  --glass-control-icon-min-block-size: 96px;
+  flex: 1 1 120px;
+}
+
 .model-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -473,28 +492,22 @@
   min-width: 0;
 }
 
-.action-row--workbench .action-button {
-  grid-template-columns: 54px minmax(0, 1fr);
-  min-height: 78px;
-  padding: 10px 14px 10px 10px;
+.action-row--workbench .glass-control--card {
+  --glass-control-card-glyph-track-size: 54px;
+  --glass-control-card-glyph-size: 46px;
+  --glass-control-glyph-svg-size: 30px;
+  --glass-control-card-min-height: 78px;
+  --glass-control-card-padding: 10px 14px 10px 10px;
+  --glass-control-card-gap: 8px;
   border-radius: 20px;
 }
 
-.action-row--workbench .action-button__glyph {
-  width: 46px;
-}
-
-.action-row--workbench .action-button__glyph svg {
-  width: 30px;
-  height: 30px;
-}
-
-.action-row--workbench .action-button__copy {
+.action-row--workbench .glass-control__copy {
   min-width: 0;
 }
 
-.action-row--workbench .action-button__copy strong,
-.action-row--workbench .action-button__copy small {
+.action-row--workbench .glass-control__copy strong,
+.action-row--workbench .glass-control__copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -907,6 +920,14 @@
     flex: 1 1 220px;
   }
 
+  .chat-actions--dock {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chat-actions--dock > :first-child {
+    grid-column: 1 / -1;
+  }
+
   .galaxy-scroll {
     max-height: 58vh;
   }
@@ -965,6 +986,45 @@
   }
 }
 
+@media (min-width: 861px) and (max-height: 800px) {
+  .chat-focus-shell {
+    gap: 10px;
+  }
+
+  .chat-stream {
+    gap: 12px;
+    min-height: 330px;
+  }
+
+  .chat-stream__messages {
+    gap: 12px;
+    max-height: 260px;
+  }
+
+  .chat-actions--dock .glass-control--card {
+    --glass-control-card-min-height: 60px;
+  }
+
+  .companion-stage {
+    min-height: 300px;
+  }
+
+  .scene-panel--companion .companion-tools-shell {
+    grid-column: span 4;
+    gap: 10px;
+  }
+
+  .companion-tools {
+    gap: 10px;
+  }
+
+  .companion-tools .glass-control--icon {
+    --glass-control-icon-min-inline-size: 100px;
+    --glass-control-icon-min-block-size: 82px;
+    flex-basis: 100px;
+  }
+}
+
 @media (max-width: 860px) {
   .model-grid,
   .settings-group-grid {
@@ -982,6 +1042,14 @@
 
   .action-row--home > * {
     flex: 1 1 220px;
+  }
+
+  .chat-actions--dock {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-actions--dock > :first-child {
+    grid-column: auto;
   }
 
   .portrait-halo {

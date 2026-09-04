@@ -49,8 +49,8 @@ defineProps({
       </div>
 
       <div class="span-12 action-row action-row--loading">
-        <ActionButton label="返回工作台" subtitle="Workbench" :icon-path="ICON_PATHS.workbench" semantic="model" @click="actions.navigate('workbench')" />
-        <ActionButton label="开始对话" subtitle="Chat Space" :icon-path="ICON_PATHS.chat" semantic="chat" @click="actions.beginConversation" />
+        <ActionButton label="返回工作台" subtitle="Workbench" :icon-path="ICON_PATHS.workbench" tier="quiet" semantic="model" @click="actions.navigate('workbench')" />
+        <ActionButton label="开始对话" subtitle="Chat Space" :icon-path="ICON_PATHS.chat" tier="primary" semantic="chat" @click="actions.beginConversation" />
       </div>
     </div>
   </section>

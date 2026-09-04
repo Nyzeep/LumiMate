@@ -45,11 +45,6 @@ const voiceBars = computed(() =>
           <p class="panel-note">{{ state.chat.status }}</p>
         </HoloCard>
 
-        <div class="chat-actions">
-          <ActionButton label="开始倾听" subtitle="Listen" :icon-path="ICON_PATHS.listen" semantic="chat" @click="actions.beginConversation" />
-          <ActionButton label="回到安静" subtitle="Quiet" :icon-path="ICON_PATHS.quiet" semantic="companion" @click="actions.stopVoice" />
-          <ActionButton label="清空星线" subtitle="Clear" :icon-path="ICON_PATHS.clear" semantic="system" @click="actions.clearChat" />
-        </div>
       </div>
 
       <div class="span-6 chat-focus-shell">
@@ -112,6 +107,12 @@ const voiceBars = computed(() =>
             <svg viewBox="0 0 24 24"><path d="M12 5 19 18H5Z" /></svg>
           </button>
         </form>
+
+        <div class="chat-actions chat-actions--dock" role="group" aria-label="对话操作">
+          <ActionButton label="开始倾听" subtitle="Listen" :icon-path="ICON_PATHS.listen" tier="primary" semantic="chat" @click="actions.beginConversation" />
+          <ActionButton label="回到安静" subtitle="Quiet" :icon-path="ICON_PATHS.quiet" tier="quiet" semantic="companion" @click="actions.stopVoice" />
+          <ActionButton label="清空星线" subtitle="Clear" :icon-path="ICON_PATHS.clear" tier="quiet" intent="danger" semantic="system" @click="actions.clearChat" />
+        </div>
       </div>
 
       <div class="span-3 scene-side-stack">

@@ -1,7 +1,10 @@
 <script setup>
-import { useHoverIntent } from "../composables/useHoverIntent";
+import { computed } from "vue";
+import GlassControl from "./GlassControl.vue";
 
-defineProps({
+defineOptions({ inheritAttrs: false });
+
+const props = defineProps({
   label: {
     type: String,
     required: true
@@ -14,34 +17,34 @@ defineProps({
     type: String,
     default: "core"
   },
+  intent: {
+    type: String,
+    default: "neutral"
+  },
   active: {
+    type: Boolean,
+    default: false
+  },
+  disabled: {
     type: Boolean,
     default: false
   }
 });
 
-defineEmits(["click"]);
-
-const { isEngaged, style, handlers } = useHoverIntent();
+const emit = defineEmits(["click"]);
+const selected = computed(() => (props.active ? true : null));
 </script>
 
 <template>
-  <button
-    type="button"
-    class="orbital-icon-button"
-    :class="[`orbital-icon-button--${semantic}`, { 'is-active': active }]"
-    :data-hovered="isEngaged ? 'true' : 'false'"
-    :style="style"
-    data-promoted-layer="true"
-    v-on="handlers"
-    @click.prevent="$emit('click')"
-  >
-    <span class="orbital-icon-button__halo" aria-hidden="true">
-      <span class="orbital-icon-button__glow"></span>
-      <svg viewBox="0 0 24 24">
-        <path :d="iconPath" />
-      </svg>
-    </span>
-    <span class="orbital-icon-button__label">{{ label }}</span>
-  </button>
+  <GlassControl
+    v-bind="$attrs"
+    kind="icon"
+    :label="label"
+    :icon-path="iconPath"
+    :accent="semantic"
+    :intent="intent"
+    :disabled="disabled"
+    :selected="selected"
+    @click="emit('click', $event)"
+  />
 </template>
