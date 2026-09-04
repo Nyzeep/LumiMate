@@ -42,6 +42,16 @@ describe("ControlGroup", () => {
     expect(wrapper.emitted("select")).toEqual([["present"]]);
   });
 
+  it("keeps tabs selected even when a caller mistakenly requests an empty choice", () => {
+    const wrapper = mount(ControlGroup, {
+      props: { ariaLabel: "工作台子空间", items, selectedId: "", selectionRole: "tab", allowEmpty: true }
+    });
+
+    const tabs = wrapper.findAll('[role="tab"]');
+    expect(tabs[0].attributes("aria-selected")).toBe("true");
+    expect(tabs[0].attributes("tabindex")).toBe("0");
+  });
+
   it("expresses a Workbench subspace as tabs linked to their panels", async () => {
     const wrapper = mount(ControlGroup, {
       props: {

@@ -47,6 +47,11 @@ const missingRequired = computed(() => componentStatus.value.missingRequired || 
 const shouldOpenGalaxy = computed(() => props.active && missingRequired.value.length > 0);
 const downloadBusy = computed(() => ["scanning", "downloading", "organizing"].includes(props.state.runtime.downloadState));
 const downloadProgressRatio = computed(() => Math.max(0, Math.min(1, Number(props.state.runtime.downloadProgress || 0) / 100)));
+const modelGroups = computed(() => [
+  { kind: "llm", label: "思维核心", currentName: props.view.currentModelName, entries: props.view.modelCatalog?.llm || [] },
+  { kind: "asr", label: "听觉节点", currentName: props.view.currentAsrName, entries: props.view.modelCatalog?.asr || [] },
+  { kind: "tts", label: "声线节点", currentName: props.view.currentTtsName, entries: props.view.modelCatalog?.tts || [] }
+]);
 
 watch(
   shouldOpenGalaxy,
@@ -211,16 +216,16 @@ async function resumeSession(sessionId) {
         </div>
 
         <div class="span-12 model-grid workbench-core-grid">
-          <HoloCard class="model-group-card">
+          <HoloCard v-for="group in modelGroups" :key="group.kind" class="model-group-card">
             <div class="model-group-card__header">
-              <strong>思维核心</strong>
-              <small>{{ view.currentModelName }}</small>
+              <strong>{{ group.label }}</strong>
+              <small>{{ group.currentName }}</small>
             </div>
             <div class="model-card-list">
               <GlassControl
-                v-for="entry in view.modelCatalog.llm"
+                v-for="entry in group.entries"
                 :key="entry.id"
-                class="model-card"
+                class="model-inspection-control"
                 :class="`is-${entry.status}`"
                 kind="compact"
                 priority="secondary"
@@ -228,75 +233,7 @@ async function resumeSession(sessionId) {
                 :label="entry.title"
                 :aria-label="`检查模型：${entry.title}`"
                 :selected="entry.selected"
-                @click="inspectNode('llm', entry.path)"
-              >
-                <span class="model-card__status" aria-hidden="true"></span>
-                <div class="model-card__content">
-                  <strong>{{ entry.title }}</strong>
-                  <small>{{ entry.subtitle }}</small>
-                </div>
-                <div class="model-card__meta">
-                  <em>{{ modelStatusLabel(entry.status) }}</em>
-                  <div class="model-card__tags">
-                    <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
-                  </div>
-                </div>
-              </GlassControl>
-            </div>
-          </HoloCard>
-
-          <HoloCard class="model-group-card">
-            <div class="model-group-card__header">
-              <strong>听觉节点</strong>
-              <small>{{ view.currentAsrName }}</small>
-            </div>
-            <div class="model-card-list">
-              <GlassControl
-                v-for="entry in view.modelCatalog.asr"
-                :key="entry.id"
-                class="model-card"
-                :class="`is-${entry.status}`"
-                kind="compact"
-                priority="secondary"
-                accent="model"
-                :label="entry.title"
-                :aria-label="`检查模型：${entry.title}`"
-                :selected="entry.selected"
-                @click="inspectNode('asr', entry.path)"
-              >
-                <span class="model-card__status" aria-hidden="true"></span>
-                <div class="model-card__content">
-                  <strong>{{ entry.title }}</strong>
-                  <small>{{ entry.subtitle }}</small>
-                </div>
-                <div class="model-card__meta">
-                  <em>{{ modelStatusLabel(entry.status) }}</em>
-                  <div class="model-card__tags">
-                    <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
-                  </div>
-                </div>
-              </GlassControl>
-            </div>
-          </HoloCard>
-
-          <HoloCard class="model-group-card">
-            <div class="model-group-card__header">
-              <strong>声线节点</strong>
-              <small>{{ view.currentTtsName }}</small>
-            </div>
-            <div class="model-card-list">
-              <GlassControl
-                v-for="entry in view.modelCatalog.tts"
-                :key="entry.id"
-                class="model-card"
-                :class="`is-${entry.status}`"
-                kind="compact"
-                priority="secondary"
-                accent="model"
-                :label="entry.title"
-                :aria-label="`检查模型：${entry.title}`"
-                :selected="entry.selected"
-                @click="inspectNode('tts', entry.path)"
+                @click="inspectNode(group.kind, entry.path)"
               >
                 <span class="model-card__status" aria-hidden="true"></span>
                 <div class="model-card__content">
@@ -563,10 +500,6 @@ async function resumeSession(sessionId) {
 </template>
 
 <style scoped>
-.model-card.glass-control::after {
-  content: none;
-}
-
 .agent-start-form {
   display: flex;
   flex-direction: column;
@@ -631,14 +564,6 @@ async function resumeSession(sessionId) {
   gap: 0.15rem;
   margin-bottom: 0.5rem;
   text-align: left;
-}
-
-.agent-session-row :deep(.glass-control__copy) {
-  width: 100%;
-}
-
-.agent-session-row :deep(.glass-control__copy small) {
-  color: var(--text-secondary, #b7ad9a);
 }
 
 @media (max-width: 900px) {

@@ -106,15 +106,16 @@ const voiceBars = computed(() =>
             <span v-for="(value, index) in voiceBars" :key="index" :style="{ transform: `scaleY(${value})` }"></span>
           </div>
           <GlassControl
-            class="dock-send"
+            class="chat-send-control"
             label="发送消息"
+            visually-hide-copy
+            bare-glyph
             kind="icon"
             button-type="submit"
             priority="primary"
             accent="chat"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5 19 18H5Z" /></svg>
-          </GlassControl>
+            icon-path="M12 5 19 18H5Z"
+          />
         </form>
 
         <div class="chat-actions chat-actions--dock" role="group" aria-label="对话操作">
@@ -143,34 +144,11 @@ const voiceBars = computed(() =>
 </template>
 
 <style scoped>
-.dock-send {
-  --glass-control-icon-min-inline-size: 44px;
-  --glass-control-icon-min-block-size: 44px;
-  width: 44px;
-  min-width: 44px;
-  padding: 0;
-  border-radius: 50%;
-}
-
-.dock-send :deep(.glass-control__copy) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.dock-send :deep(svg) {
-  position: relative;
-  z-index: 1;
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: rgba(245, 234, 223, 0.82);
-  stroke-width: 1;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.chat-send-control {
+  --glass-control-icon-inline-size: 44px;
+  --glass-control-icon-block-size: 44px;
+  --glass-control-icon-padding: 0;
+  --glass-control-icon-radius: 50%;
+  --glass-control-glyph-size: 18px;
 }
 </style>

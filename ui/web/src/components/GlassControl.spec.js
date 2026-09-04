@@ -54,6 +54,24 @@ describe("GlassControl", () => {
     expect(wrapper.get("button").attributes("aria-pressed")).toBe("true");
   });
 
+  it("keeps visible danger wording when callers provide rich slot content", () => {
+    const wrapper = mount(GlassControl, {
+      props: { label: "取消任务", intent: "danger" },
+      slots: { default: '<svg aria-hidden="true"></svg>' }
+    });
+
+    expect(wrapper.get("button").attributes("aria-label")).toBe("危险操作：取消任务");
+    expect(wrapper.text()).toContain("危险操作");
+  });
+
+  it("preserves an icon control's accessible name when its copy is visually hidden", () => {
+    const wrapper = mount(GlassControl, {
+      props: { label: "最小化", kind: "icon", visuallyHideCopy: true }
+    });
+
+    expect(wrapper.get("button").attributes("aria-label")).toBe("最小化");
+  });
+
   it("supports submit controls with caller-owned rich content", () => {
     const wrapper = mount(GlassControl, {
       props: { label: "发送消息", buttonType: "submit", kind: "icon" },

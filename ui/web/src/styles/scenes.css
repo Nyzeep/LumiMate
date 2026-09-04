@@ -425,6 +425,12 @@
   overflow: hidden;
 }
 
+.scene-panel--workbench.is-galaxy .scene-grid {
+  grid-template-rows: auto auto auto auto auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .workbench-core-grid {
   align-self: stretch;
   min-height: 0;
@@ -440,7 +446,7 @@
   gap: 8px;
 }
 
-.scene-panel--workbench .model-card {
+.scene-panel--workbench .model-inspection-control {
   min-height: 86px;
   padding: 12px 14px;
 }
@@ -824,7 +830,7 @@
   gap: 12px;
 }
 
-.model-card {
+.model-inspection-control {
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr) auto;
   gap: var(--space-3);
@@ -834,7 +840,7 @@
   overflow: hidden;
 }
 
-.model-card > * {
+.model-inspection-control > * {
   position: relative;
   z-index: 1;
 }

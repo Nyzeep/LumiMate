@@ -31,6 +31,7 @@ const activeMode = computed(() => modes.find((mode) => mode.id === props.current
         selection-role="radio"
         orientation="vertical"
         kind="icon"
+        visually-hide-copy
         aria-label="环境模式"
         @select="emit('select', $event)"
       />
@@ -44,23 +45,10 @@ const activeMode = computed(() => modes.find((mode) => mode.id === props.current
 </template>
 
 <style scoped>
-.ambient-mode-switch__group :deep(.glass-control--icon) {
+.ambient-mode-switch__group {
   --glass-control-icon-min-inline-size: 0;
   --glass-control-icon-min-block-size: 58px;
-  padding: 8px;
-}
-
-.ambient-mode-switch__group :deep(.glass-control__glyph) {
-  width: 36px;
-}
-
-.ambient-mode-switch__group :deep(.glass-control__copy) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  --glass-control-icon-padding: 8px;
+  --glass-control-glyph-size: 36px;
 }
 </style>

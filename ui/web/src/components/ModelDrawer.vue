@@ -62,11 +62,13 @@ watch(
 <template>
   <aside class="model-drawer" :class="{ 'is-open': open }" :aria-hidden="!open" :inert="!open">
     <GlassControl
-      class="model-drawer__close"
+      class="model-drawer-close-control"
       kind="icon"
       priority="quiet"
       accent="system"
       label="关闭配置"
+      visually-hide-copy
+      bare-glyph
       :icon-path="CLOSE_PATH"
       @click="emit('close')"
     />
@@ -84,6 +86,7 @@ watch(
       accent="model"
       label="打开本地文件夹"
       subtitle="Open folder"
+      block
       @click="emit('open-path')"
     />
     <ControlGroup
@@ -92,6 +95,7 @@ watch(
       :selected-id="path"
       selection-role="radio"
       allow-empty
+      block
       accent="model"
       :aria-label="optionsLabel"
       @select="emit('select', $event)"
@@ -100,68 +104,26 @@ watch(
 </template>
 
 <style scoped>
-.model-drawer__close {
-  --glass-control-icon-min-inline-size: 34px;
-  --glass-control-icon-min-block-size: 34px;
-  width: 34px;
-  min-width: 34px;
-  padding: 0;
-}
-
-.model-drawer__close :deep(.glass-control__glyph) {
-  width: 18px;
-  border: 0;
-  background: transparent;
-}
-
-.model-drawer__close :deep(.glass-control__copy) {
+.model-drawer-close-control {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.model-drawer__open-path {
-  width: 100%;
+  top: 16px;
+  right: 16px;
+  --glass-control-icon-inline-size: 34px;
+  --glass-control-icon-block-size: 34px;
+  --glass-control-icon-padding: 0;
+  --glass-control-glyph-size: 18px;
 }
 
 .model-drawer__options {
+  --glass-control-compact-min-block-size: 58px;
+  --glass-control-compact-padding: 10px 14px;
+  --glass-control-radius: 12px;
+  --glass-control-justify-content: flex-start;
   display: grid;
   gap: 10px;
   margin-top: 24px;
   max-height: 40vh;
   overflow: auto;
   padding-right: 4px;
-}
-
-.model-drawer__options :deep(.glass-control) {
-  display: grid;
-  gap: 4px;
-  justify-items: start;
-  width: 100%;
-  min-height: 58px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  text-align: left;
-}
-
-.model-drawer__options :deep(.glass-control)::after {
-  content: none;
-}
-
-.model-drawer__options :deep(.glass-control__copy strong) {
-  color: var(--color-text);
-  font-size: var(--text-meta);
-}
-
-.model-drawer__options :deep(.glass-control__copy small) {
-  color: var(--color-dim);
-  font-family: var(--font-mono);
-  font-size: var(--text-status);
-  letter-spacing: var(--tracking-mono);
-  text-transform: uppercase;
 }
 </style>

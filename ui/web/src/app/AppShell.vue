@@ -320,29 +320,34 @@ onMounted(async () => {
 
         <div class="shell-header__actions" aria-label="窗口控制" data-promoted-layer="true">
           <GlassControl
-            class="window-action"
+            class="window-control"
             kind="icon"
             priority="quiet"
             accent="system"
             label="最小化"
+            visually-hide-copy
+            bare-glyph
             :icon-path="ICON_PATHS.minimize"
             @click="actions.minimizeWindow"
           />
           <GlassControl
-            class="window-action"
+            class="window-control"
             kind="icon"
             priority="quiet"
             accent="system"
             :label="state.window.isFullscreen ? '窗口化' : '全屏'"
+            visually-hide-copy
+            bare-glyph
             :icon-path="state.window.isFullscreen ? ICON_PATHS.expand : ICON_PATHS.restore"
             @click="actions.toggleWindowMode"
           />
           <GlassControl
-            class="window-action window-action--close"
+            class="window-control window-control--close"
             kind="compact"
             priority="quiet"
             intent="danger"
             accent="system"
+            bare-glyph
             label="关闭窗口"
             :icon-path="ICON_PATHS.close"
             @click="actions.closeWindow"
@@ -392,6 +397,9 @@ onMounted(async () => {
       type="button"
       class="drawer-scrim"
       :class="{ 'is-open': state.ui.drawerOpen }"
+      :aria-hidden="!state.ui.drawerOpen"
+      :disabled="!state.ui.drawerOpen"
+      :tabindex="state.ui.drawerOpen ? 0 : -1"
       aria-label="关闭配置抽屉"
       @click.prevent="actions.closeDrawer"
     ></button>
@@ -401,45 +409,17 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.window-action.glass-control::after {
-  content: none;
+.window-control {
+  --glass-control-icon-inline-size: 46px;
+  --glass-control-icon-block-size: 46px;
+  --glass-control-icon-padding: 0;
+  --glass-control-glyph-size: 18px;
 }
 
-.window-action.glass-control--icon {
-  --glass-control-icon-min-inline-size: 46px;
-  --glass-control-icon-min-block-size: 46px;
-  width: 46px;
-  min-width: 46px;
-  min-height: 46px;
-  padding: 0;
-}
-
-.window-action.glass-control--icon :deep(.glass-control__glyph) {
-  width: 18px;
-  border: 0;
-  background: transparent;
-}
-
-.window-action.glass-control--icon :deep(.glass-control__copy) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.window-action--close {
-  width: auto;
-  min-width: 122px;
-  min-height: 46px;
-  padding: 5px 10px;
-  border-radius: var(--radius-md);
-  aspect-ratio: auto;
-}
-
-.window-action--close :deep(.glass-control__glyph) {
-  width: 28px;
+.window-control--close {
+  --glass-control-compact-min-inline-size: 122px;
+  --glass-control-compact-min-block-size: 46px;
+  --glass-control-compact-padding: 5px 10px;
+  --glass-control-glyph-size: 28px;
 }
 </style>

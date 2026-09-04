@@ -31,6 +31,14 @@ const props = defineProps({
     default: "button",
     validator: (value) => ["button", "submit", "reset"].includes(value)
   },
+  visuallyHideCopy: {
+    type: Boolean,
+    default: false
+  },
+  bareGlyph: {
+    type: Boolean,
+    default: false
+  },
   priority: {
     type: String,
     default: "secondary",
@@ -96,7 +104,13 @@ function activate(event) {
       'glass-control--' + priority,
       'glass-control--' + intent,
       'glass-control--accent-' + resolvedAccent,
-      { 'glass-control--block': block, 'has-glyph': Boolean(iconPath), 'is-selected': selected === true }
+      {
+        'glass-control--block': block,
+        'has-glyph': Boolean(iconPath),
+        'has-bare-glyph': bareGlyph,
+        'has-visually-hidden-copy': visuallyHideCopy,
+        'is-selected': selected === true
+      }
     ]"
     :role="selectionRole === 'button' ? undefined : selectionRole"
     :aria-label="accessibleLabel"
@@ -123,11 +137,11 @@ function activate(event) {
         </svg>
       </span>
       <span class="glass-control__copy">
-        <small v-if="intent === 'danger'" class="glass-control__intent-label">危险操作</small>
         <strong>{{ label }}</strong>
         <small v-if="subtitle">{{ subtitle }}</small>
       </span>
     </slot>
+    <small v-if="intent === 'danger'" class="glass-control__intent-label">危险操作</small>
   </button>
 </template>
 
@@ -137,12 +151,13 @@ function activate(event) {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: var(--glass-control-justify-content, center);
   gap: 10px;
-  min-height: 42px;
-  padding: 10px 16px;
+  min-inline-size: var(--glass-control-min-inline-size, 0);
+  min-height: var(--glass-control-min-block-size, 42px);
+  padding: var(--glass-control-padding, 10px 16px);
   border: var(--border-hairline) solid rgba(255, 255, 255, 0.16);
-  border-radius: var(--radius-md);
+  border-radius: var(--glass-control-radius, var(--radius-md));
   overflow: hidden;
   color: var(--color-text);
   background:
@@ -209,8 +224,8 @@ function activate(event) {
 }
 
 .glass-control--card {
-  justify-content: flex-start;
-  min-width: min(100%, 220px);
+  justify-content: var(--glass-control-card-justify-content, flex-start);
+  min-width: var(--glass-control-card-min-inline-size, min(100%, 220px));
   min-height: var(--glass-control-card-min-height, 104px);
   padding: var(--glass-control-card-padding, 14px 18px 14px 14px);
 }
@@ -228,8 +243,12 @@ function activate(event) {
 
 .glass-control--icon {
   display: grid;
-  min-width: var(--glass-control-icon-min-inline-size, 120px);
-  min-height: var(--glass-control-icon-min-block-size, 94px);
+  inline-size: var(--glass-control-icon-inline-size, auto);
+  block-size: var(--glass-control-icon-block-size, auto);
+  min-inline-size: var(--glass-control-icon-min-inline-size, var(--glass-control-icon-inline-size, 120px));
+  min-block-size: var(--glass-control-icon-min-block-size, var(--glass-control-icon-block-size, 94px));
+  padding: var(--glass-control-icon-padding, var(--glass-control-padding, 10px 16px));
+  border-radius: var(--glass-control-icon-radius, var(--glass-control-radius, var(--radius-md)));
   place-items: center;
   text-align: center;
 }
@@ -257,6 +276,12 @@ function activate(event) {
   pointer-events: none;
 }
 
+.glass-control--compact {
+  min-inline-size: var(--glass-control-compact-min-inline-size, var(--glass-control-min-inline-size, 0));
+  min-height: var(--glass-control-compact-min-block-size, var(--glass-control-min-block-size, 42px));
+  padding: var(--glass-control-compact-padding, var(--glass-control-padding, 10px 16px));
+}
+
 .glass-control--quiet {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.025);
@@ -264,7 +289,7 @@ function activate(event) {
 }
 
 .glass-control--compact.glass-control--quiet {
-  min-height: 38px;
+  min-height: var(--glass-control-compact-min-block-size, 38px);
 }
 
 .glass-control--danger {
@@ -305,7 +330,7 @@ function activate(event) {
   position: relative;
   z-index: 1;
   display: grid;
-  width: 42px;
+  width: var(--glass-control-glyph-size, 42px);
   aspect-ratio: 1;
   place-items: center;
   border: var(--border-hairline) solid rgba(var(--glass-control-accent), 0.28);
@@ -315,6 +340,11 @@ function activate(event) {
 
 .glass-control--card .glass-control__glyph {
   width: var(--glass-control-card-glyph-size, 58px);
+}
+
+.glass-control.has-bare-glyph .glass-control__glyph {
+  border: 0;
+  background: transparent;
 }
 
 .glass-control__glyph svg {
@@ -332,6 +362,16 @@ function activate(event) {
   position: relative;
   z-index: 1;
   min-width: 0;
+}
+
+.glass-control.has-visually-hidden-copy .glass-control__copy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .glass-control__copy strong,
