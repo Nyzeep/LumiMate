@@ -31,7 +31,7 @@ LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但�
 
 ## Implementation Decisions
 
-1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用与选中状态；内部处理玻璃表面、边缘高光、柔光、焦点、按下和减少动效。
+1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态，以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）；内部处理玻璃表面、边缘高光、柔光、焦点、按下和减少动效。
 2. 建立仅用于互斥选择的 ControlGroup 模块，覆盖 tab 与 radio 所需的选中状态、键盘与 ARIA 语义。RailNav 保留导航职责，并采用当前项语义，不伪装成普通 radio 组。
 3. 现有行动卡和轨道图标控件变为 GlassControl 的薄适配层。复杂业务内容保留其现有结构，只接入统一呈现与状态约定，避免按场景新增浅层按钮包装。
 4. 场景色只能作为弱上下文强调；priority 表示当前区域的重要性，intent 表示中性或危险。拒绝、取消、清空、释放等操作不得以 primary-neutral 组合出现，也不得只依赖颜色传达风险。
@@ -44,7 +44,7 @@ LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但�
 
 ## Testing Decisions
 
-1. GlassControl 是最高层的可复用测试 seam。测试外部可观察行为：可访问名称、焦点可达性、禁用状态不触发动作、无图标控制没有空占位、危险意图具有文字和语义提示。
+1. GlassControl 是最高层的可复用测试 seam。Vitest 测试外部可观察行为：可访问名称、键盘焦点可达性、禁用状态不触发动作、无图标控制没有空占位、危险意图具有文字和语义提示。block 全宽、焦点可见性与减少动效属于真实渲染行为，在浏览器与 Tauri 的视觉验收中验证。
 2. ControlGroup 测试 tab 或 radio 在任一时刻只保留一个选中项，并输出正确的 aria-selected 或 aria-checked；RailNav 当前项输出 aria-current。
 3. Workbench 在用户可见 seam 上测试命令栏：每个状态区域至多一个 primary，确认或允许清晰可达，拒绝或取消不与 primary 混同，且既有 action 事件仍正确发出。
 4. 建立最小 Vue 测试基架，因为当前前端没有现成 UI 测试脚本。测试关注行为与语义，不锁定内部 class 或实现细节。

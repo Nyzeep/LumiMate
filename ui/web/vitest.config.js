@@ -1,14 +1,12 @@
-import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
-import vue from "@vitejs/plugin-vue";
+import { defineConfig, mergeConfig } from "vitest/config";
+import viteConfig from "./vite.config.js";
 
-const rootDir = fileURLToPath(new URL("./", import.meta.url));
-
-export default defineConfig({
-  root: rootDir,
-  plugins: [vue()],
-  test: {
-    environment: "jsdom",
-    include: ["src/**/*.spec.js"]
-  }
-});
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: "jsdom",
+      include: ["src/**/*.spec.js"]
+    }
+  })
+);

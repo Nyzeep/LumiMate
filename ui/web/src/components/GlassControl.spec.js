@@ -29,13 +29,13 @@ describe("GlassControl", () => {
     expect(wrapper.emitted("click")).toBeUndefined();
   });
 
-  it("makes a destructive action explicit to sighted and assistive-technology users", () => {
+  it("keeps danger wording in the accessible name when a caller supplies custom copy", () => {
     const wrapper = mount(GlassControl, {
-      props: { label: "取消任务", intent: "danger" }
+      props: { label: "取消任务", intent: "danger", ariaLabel: "终止当前执行" }
     });
 
     expect(wrapper.text()).toContain("危险操作");
-    expect(wrapper.get("button").attributes("aria-label")).toBe("危险操作：取消任务");
+    expect(wrapper.get("button").attributes("aria-label")).toBe("危险操作：终止当前执行");
   });
 
   it("does not reserve a glyph when the caller supplies no icon", () => {
@@ -54,13 +54,15 @@ describe("GlassControl", () => {
     expect(wrapper.get("button").attributes("aria-pressed")).toBe("true");
   });
 
-  it("honors a full-width layout request from a caller", () => {
+  it("remains reachable through the keyboard focus order", () => {
     const wrapper = mount(GlassControl, {
-      props: { label: "进入对话", kind: "card", block: true }
+      attachTo: document.body,
+      props: { label: "确认计划" }
     });
 
-    const control = wrapper.get("button");
-    expect(control.classes()).toContain("glass-control--block");
-    expect(control.attributes("data-block")).toBe("true");
+    const control = wrapper.get("button").element;
+    control.focus();
+    expect(document.activeElement).toBe(control);
+    wrapper.unmount();
   });
 });

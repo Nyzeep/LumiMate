@@ -2,6 +2,8 @@
 import { computed } from "vue";
 import { useHoverIntent } from "../composables/useHoverIntent";
 
+const CONTROL_ACCENTS = new Set(["core", "chat", "companion", "model", "system"]);
+
 const props = defineProps({
   label: {
     type: String,
@@ -34,7 +36,7 @@ const props = defineProps({
     default: "neutral",
     validator: (value) => ["neutral", "danger"].includes(value)
   },
-  context: {
+  accent: {
     type: String,
     default: "core"
   },
@@ -61,11 +63,11 @@ const { isEngaged, style, handlers } = useHoverIntent({
   disabled: computed(() => props.disabled)
 });
 
+const resolvedAccent = computed(() => (CONTROL_ACCENTS.has(props.accent) ? props.accent : "core"));
+
 const accessibleLabel = computed(() => {
-  if (props.ariaLabel) {
-    return props.ariaLabel;
-  }
-  return props.intent === "danger" ? "危险操作：" + props.label : props.label;
+  const label = props.ariaLabel || props.label;
+  return props.intent === "danger" ? "危险操作：" + label : label;
 });
 
 function activate(event) {
@@ -83,7 +85,7 @@ function activate(event) {
       'glass-control--' + kind,
       'glass-control--' + priority,
       'glass-control--' + intent,
-      'glass-control--context-' + context,
+      'glass-control--accent-' + resolvedAccent,
       { 'glass-control--block': block, 'is-selected': selected === true }
     ]"
     :aria-label="accessibleLabel"
@@ -93,7 +95,6 @@ function activate(event) {
     :data-kind="kind"
     :data-priority="priority"
     :data-intent="intent"
-    :data-block="block ? 'true' : undefined"
     :data-hovered="isEngaged ? 'true' : 'false'"
     :style="style"
     data-promoted-layer="true"
@@ -256,19 +257,19 @@ function activate(event) {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 12px 30px rgba(0, 0, 0, 0.24), 0 0 22px rgba(229, 128, 112, 0.16);
 }
 
-.glass-control--context-chat {
+.glass-control--accent-chat {
   --glass-control-accent: 255, 196, 132;
 }
 
-.glass-control--context-companion {
+.glass-control--accent-companion {
   --glass-control-accent: 248, 208, 176;
 }
 
-.glass-control--context-model {
+.glass-control--accent-model {
   --glass-control-accent: 255, 166, 104;
 }
 
-.glass-control--context-system {
+.glass-control--accent-system {
   --glass-control-accent: 168, 207, 188;
 }
 
