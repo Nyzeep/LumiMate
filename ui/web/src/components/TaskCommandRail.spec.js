@@ -21,12 +21,23 @@ describe("TaskCommandRail", () => {
 
   it("maps a permission request to paired allow and reject decisions", async () => {
     const wrapper = mount(TaskCommandRail, {
-      props: { task: { state: "running", permission: { category: "filesystem" } }, stateLabel: "等待权限" }
+      props: { task: { state: "awaiting_permission", permission: { category: "filesystem" } }, stateLabel: "等待权限" }
     });
 
     await wrapper.get('button[aria-label="允许"]').trigger("click");
     await wrapper.get('button[aria-label="危险操作：拒绝权限"]').trigger("click");
     expect(wrapper.emitted("permission-decision")).toEqual([[true], [false]]);
+  });
+
+  it("favors a running state over a stale permission payload", () => {
+    const wrapper = mount(TaskCommandRail, {
+      props: { task: { state: "running", permission: { category: "filesystem" } }, stateLabel: "运行中" }
+    });
+
+    const rail = wrapper.get('[aria-label="任务命令"]');
+    expect(rail.get('button[aria-label="暂停任务"]')).toBeTruthy();
+    expect(rail.get('button[aria-label="危险操作：取消任务"]')).toBeTruthy();
+    expect(rail.find('button[aria-label="允许"]').exists()).toBe(false);
   });
 
   it("maps a running task to pause and cancel without offering unrelated task commands", async () => {

@@ -20,7 +20,7 @@ const primaryCommand = computed(() => {
   if (!task) {
     return null;
   }
-  if (task.permission) {
+  if (task.state === "awaiting_permission" && task.permission) {
     return {
       event: "permission-decision",
       value: true,
@@ -46,7 +46,7 @@ const dangerCommand = computed(() => {
   if (!task) {
     return null;
   }
-  if (task.permission) {
+  if (task.state === "awaiting_permission" && task.permission) {
     return { event: "permission-decision", value: false, label: "拒绝权限", subtitle: "Reject", caption: "拒绝当前权限请求" };
   }
   if (task.state === "awaiting_plan_approval") {
