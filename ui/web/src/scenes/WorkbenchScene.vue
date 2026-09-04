@@ -2,6 +2,7 @@
 import { computed, reactive, watch } from "vue";
 import ActionButton from "../components/ActionButton.vue";
 import ControlGroup from "../components/ControlGroup.vue";
+import GlassControl from "../components/GlassControl.vue";
 import HoloCard from "../components/HoloCard.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
 import TaskCommandRail from "../components/TaskCommandRail.vue";
@@ -20,6 +21,11 @@ const subspaces = [
   { id: "core", label: "核心舱", subtitle: "Core Chamber" },
   { id: "galaxy", label: "星系选择", subtitle: "Model Galaxy" },
   { id: "agent", label: "任务舱", subtitle: "Task Chamber" }
+];
+
+const providers = [
+  { id: "modelscope", label: "魔搭" },
+  { id: "huggingface", label: "HF" }
 ];
 
 const local = reactive({
@@ -211,14 +217,18 @@ async function resumeSession(sessionId) {
               <small>{{ view.currentModelName }}</small>
             </div>
             <div class="model-card-list">
-              <button
+              <GlassControl
                 v-for="entry in view.modelCatalog.llm"
                 :key="entry.id"
-                type="button"
                 class="model-card"
-                :class="[`is-${entry.status}`, { 'is-selected': entry.selected }]"
-                data-promoted-layer="true"
-                @click.prevent="inspectNode('llm', entry.path)"
+                :class="`is-${entry.status}`"
+                kind="compact"
+                priority="secondary"
+                accent="model"
+                :label="entry.title"
+                :aria-label="`检查模型：${entry.title}`"
+                :selected="entry.selected"
+                @click="inspectNode('llm', entry.path)"
               >
                 <span class="model-card__status" aria-hidden="true"></span>
                 <div class="model-card__content">
@@ -231,7 +241,7 @@ async function resumeSession(sessionId) {
                     <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
                   </div>
                 </div>
-              </button>
+              </GlassControl>
             </div>
           </HoloCard>
 
@@ -241,14 +251,18 @@ async function resumeSession(sessionId) {
               <small>{{ view.currentAsrName }}</small>
             </div>
             <div class="model-card-list">
-              <button
+              <GlassControl
                 v-for="entry in view.modelCatalog.asr"
                 :key="entry.id"
-                type="button"
                 class="model-card"
-                :class="[`is-${entry.status}`, { 'is-selected': entry.selected }]"
-                data-promoted-layer="true"
-                @click.prevent="inspectNode('asr', entry.path)"
+                :class="`is-${entry.status}`"
+                kind="compact"
+                priority="secondary"
+                accent="model"
+                :label="entry.title"
+                :aria-label="`检查模型：${entry.title}`"
+                :selected="entry.selected"
+                @click="inspectNode('asr', entry.path)"
               >
                 <span class="model-card__status" aria-hidden="true"></span>
                 <div class="model-card__content">
@@ -261,7 +275,7 @@ async function resumeSession(sessionId) {
                     <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
                   </div>
                 </div>
-              </button>
+              </GlassControl>
             </div>
           </HoloCard>
 
@@ -271,14 +285,18 @@ async function resumeSession(sessionId) {
               <small>{{ view.currentTtsName }}</small>
             </div>
             <div class="model-card-list">
-              <button
+              <GlassControl
                 v-for="entry in view.modelCatalog.tts"
                 :key="entry.id"
-                type="button"
                 class="model-card"
-                :class="[`is-${entry.status}`, { 'is-selected': entry.selected }]"
-                data-promoted-layer="true"
-                @click.prevent="inspectNode('tts', entry.path)"
+                :class="`is-${entry.status}`"
+                kind="compact"
+                priority="secondary"
+                accent="model"
+                :label="entry.title"
+                :aria-label="`检查模型：${entry.title}`"
+                :selected="entry.selected"
+                @click="inspectNode('tts', entry.path)"
               >
                 <span class="model-card__status" aria-hidden="true"></span>
                 <div class="model-card__content">
@@ -291,7 +309,7 @@ async function resumeSession(sessionId) {
                     <span v-for="tag in entry.tags" :key="tag">{{ tag }}</span>
                   </div>
                 </div>
-              </button>
+              </GlassControl>
             </div>
           </HoloCard>
         </div>
@@ -336,25 +354,34 @@ async function resumeSession(sessionId) {
                 <p class="scene-kicker">听觉星系 / ASR</p>
                 <strong>{{ componentStatus.asr.ready ? "已检测到听觉节点" : "选择一个听觉节点" }}</strong>
               </div>
-              <div class="provider-switch">
-                <button type="button" :class="{ 'is-active': local.providerByKind.asr === 'modelscope' }" @click.prevent="local.providerByKind.asr = 'modelscope'">魔搭</button>
-                <button type="button" :class="{ 'is-active': local.providerByKind.asr === 'huggingface' }" @click.prevent="local.providerByKind.asr = 'huggingface'">HF</button>
-              </div>
+              <ControlGroup
+                class="provider-switch"
+                :items="providers"
+                :selected-id="local.providerByKind.asr"
+                selection-role="radio"
+                accent="model"
+                aria-label="ASR 下载来源"
+                @select="local.providerByKind.asr = $event"
+              />
             </div>
             <div class="download-card-list">
-              <button
+              <GlassControl
                 v-for="item in state.runtime.downloadCatalog.asr"
                 :key="item.id"
-                type="button"
                 class="download-card"
+                kind="card"
+                priority="secondary"
+                accent="model"
+                :label="item.title"
+                :aria-label="`下载模型：${item.title}`"
                 :disabled="downloadBusy || !modelIdFor(item, 'asr')"
-                @click.prevent="startDownload('asr', item)"
+                @click="startDownload('asr', item)"
               >
                 <span class="download-card__orbit" aria-hidden="true"></span>
                 <strong>{{ item.title }}</strong>
                 <small>{{ item.subtitle }}</small>
                 <em>{{ providerLabel(local.providerByKind.asr) }} / {{ item.sizeLabel }}</em>
-              </button>
+              </GlassControl>
             </div>
           </HoloCard>
 
@@ -364,25 +391,34 @@ async function resumeSession(sessionId) {
                 <p class="scene-kicker">思维星系 / LLM</p>
                 <strong>{{ componentStatus.llm.ready ? "已检测到思维核心" : "选择一个思维核心" }}</strong>
               </div>
-              <div class="provider-switch">
-                <button type="button" :class="{ 'is-active': local.providerByKind.llm === 'modelscope' }" @click.prevent="local.providerByKind.llm = 'modelscope'">魔搭</button>
-                <button type="button" :class="{ 'is-active': local.providerByKind.llm === 'huggingface' }" @click.prevent="local.providerByKind.llm = 'huggingface'">HF</button>
-              </div>
+              <ControlGroup
+                class="provider-switch"
+                :items="providers"
+                :selected-id="local.providerByKind.llm"
+                selection-role="radio"
+                accent="model"
+                aria-label="LLM 下载来源"
+                @select="local.providerByKind.llm = $event"
+              />
             </div>
             <div class="download-card-list">
-              <button
+              <GlassControl
                 v-for="item in state.runtime.downloadCatalog.llm"
                 :key="item.id"
-                type="button"
                 class="download-card"
+                kind="card"
+                priority="secondary"
+                accent="model"
+                :label="item.title"
+                :aria-label="`下载模型：${item.title}`"
                 :disabled="downloadBusy || !modelIdFor(item, 'llm')"
-                @click.prevent="startDownload('llm', item)"
+                @click="startDownload('llm', item)"
               >
                 <span class="download-card__orbit" aria-hidden="true"></span>
                 <strong>{{ item.title }}</strong>
                 <small>{{ item.subtitle }}</small>
                 <em>{{ providerLabel(local.providerByKind.llm) }} / {{ item.sizeLabel }}</em>
-              </button>
+              </GlassControl>
             </div>
           </HoloCard>
 
@@ -505,16 +541,19 @@ async function resumeSession(sessionId) {
 
           <HoloCard class="agent-sessions-card">
             <p class="scene-kicker">最近 Session</p>
-            <button
+            <GlassControl
               v-for="session in view.agent.sessions.slice(0, 5)"
               :key="session.sessionId"
-              type="button"
               class="agent-session-row"
-              @click.prevent="resumeSession(session.sessionId)"
-            >
-              <span>{{ session.sessionId }}</span>
-              <small>{{ session.status }} · {{ session.summary }}</small>
-            </button>
+              kind="compact"
+              priority="quiet"
+              accent="model"
+              block
+              :label="session.sessionId"
+              :subtitle="`${session.status} · ${session.summary}`"
+              :aria-label="`恢复 Session：${session.sessionId}`"
+              @click="resumeSession(session.sessionId)"
+            />
             <p v-if="!view.agent.sessions.length" class="panel-note">暂无历史 Session。</p>
           </HoloCard>
         </div>
@@ -524,6 +563,10 @@ async function resumeSession(sessionId) {
 </template>
 
 <style scoped>
+.model-card.glass-control::after {
+  content: none;
+}
+
 .agent-start-form {
   display: flex;
   flex-direction: column;
@@ -581,22 +624,20 @@ async function resumeSession(sessionId) {
   padding-left: 0;
 }
 
-.agent-session-row {
+.agent-session-row.glass-control {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.15rem;
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 1px solid rgba(247, 200, 115, 0.18);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.7rem;
   margin-bottom: 0.5rem;
-  color: var(--text-primary, #e8e2d4);
-  cursor: pointer;
+  text-align: left;
 }
 
-.agent-session-row small {
+.agent-session-row :deep(.glass-control__copy) {
+  width: 100%;
+}
+
+.agent-session-row :deep(.glass-control__copy small) {
   color: var(--text-secondary, #b7ad9a);
 }
 

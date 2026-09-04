@@ -26,6 +26,11 @@ const props = defineProps({
     default: "compact",
     validator: (value) => ["card", "icon", "compact"].includes(value)
   },
+  buttonType: {
+    type: String,
+    default: "button",
+    validator: (value) => ["button", "submit", "reset"].includes(value)
+  },
   priority: {
     type: String,
     default: "secondary",
@@ -84,7 +89,7 @@ function activate(event) {
 
 <template>
   <button
-    type="button"
+    :type="buttonType"
     class="glass-control"
     :class="[
       'glass-control--' + kind,
@@ -111,16 +116,18 @@ function activate(event) {
   >
     <span class="glass-control__glow" aria-hidden="true"></span>
     <span class="glass-control__press" aria-hidden="true"></span>
-    <span v-if="iconPath" class="glass-control__glyph" aria-hidden="true">
-      <svg :viewBox="iconViewBox">
-        <path :d="iconPath" />
-      </svg>
-    </span>
-    <span class="glass-control__copy">
-      <small v-if="intent === 'danger'" class="glass-control__intent-label">危险操作</small>
-      <strong>{{ label }}</strong>
-      <small v-if="subtitle">{{ subtitle }}</small>
-    </span>
+    <slot>
+      <span v-if="iconPath" class="glass-control__glyph" aria-hidden="true">
+        <svg :viewBox="iconViewBox">
+          <path :d="iconPath" />
+        </svg>
+      </span>
+      <span class="glass-control__copy">
+        <small v-if="intent === 'danger'" class="glass-control__intent-label">危险操作</small>
+        <strong>{{ label }}</strong>
+        <small v-if="subtitle">{{ subtitle }}</small>
+      </span>
+    </slot>
   </button>
 </template>
 

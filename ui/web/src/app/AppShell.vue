@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, watch } from "vue";
 import AmbientModeSwitch from "../components/AmbientModeSwitch.vue";
 import BootVeil from "../components/BootVeil.vue";
 import DiagnosticsHud from "../components/DiagnosticsHud.vue";
+import GlassControl from "../components/GlassControl.vue";
 import ModelDrawer from "../components/ModelDrawer.vue";
 import RailNav from "../components/RailNav.vue";
 import RuntimeAmbientLayer from "../components/RuntimeAmbientLayer.vue";
@@ -318,20 +319,34 @@ onMounted(async () => {
         </p>
 
         <div class="shell-header__actions" aria-label="窗口控制" data-promoted-layer="true">
-          <button type="button" class="window-action" aria-label="最小化" @click.prevent="actions.minimizeWindow">
-            <svg viewBox="0 0 24 24"><path :d="ICON_PATHS.minimize" /></svg>
-          </button>
-          <button
-            type="button"
+          <GlassControl
             class="window-action"
-            :aria-label="state.window.isFullscreen ? '窗口化' : '全屏'"
-            @click.prevent="actions.toggleWindowMode"
-          >
-            <svg viewBox="0 0 24 24"><path :d="state.window.isFullscreen ? ICON_PATHS.expand : ICON_PATHS.restore" /></svg>
-          </button>
-          <button type="button" class="window-action window-action--close" aria-label="关闭" @click.prevent="actions.closeWindow">
-            <svg viewBox="0 0 24 24"><path :d="ICON_PATHS.close" /></svg>
-          </button>
+            kind="icon"
+            priority="quiet"
+            accent="system"
+            label="最小化"
+            :icon-path="ICON_PATHS.minimize"
+            @click="actions.minimizeWindow"
+          />
+          <GlassControl
+            class="window-action"
+            kind="icon"
+            priority="quiet"
+            accent="system"
+            :label="state.window.isFullscreen ? '窗口化' : '全屏'"
+            :icon-path="state.window.isFullscreen ? ICON_PATHS.expand : ICON_PATHS.restore"
+            @click="actions.toggleWindowMode"
+          />
+          <GlassControl
+            class="window-action window-action--close"
+            kind="compact"
+            priority="quiet"
+            intent="danger"
+            accent="system"
+            label="关闭窗口"
+            :icon-path="ICON_PATHS.close"
+            @click="actions.closeWindow"
+          />
         </div>
       </header>
 
@@ -384,3 +399,47 @@ onMounted(async () => {
     <DiagnosticsHud :visible="diagnostics.visible" :diagnostics="diagnostics" />
   </main>
 </template>
+
+<style scoped>
+.window-action.glass-control::after {
+  content: none;
+}
+
+.window-action.glass-control--icon {
+  --glass-control-icon-min-inline-size: 46px;
+  --glass-control-icon-min-block-size: 46px;
+  width: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0;
+}
+
+.window-action.glass-control--icon :deep(.glass-control__glyph) {
+  width: 18px;
+  border: 0;
+  background: transparent;
+}
+
+.window-action.glass-control--icon :deep(.glass-control__copy) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.window-action--close {
+  width: auto;
+  min-width: 122px;
+  min-height: 46px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  aspect-ratio: auto;
+}
+
+.window-action--close :deep(.glass-control__glyph) {
+  width: 28px;
+}
+</style>

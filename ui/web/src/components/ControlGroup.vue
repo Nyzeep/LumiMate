@@ -29,6 +29,10 @@ const props = defineProps({
     type: String,
     default: "core"
   },
+  allowEmpty: {
+    type: Boolean,
+    default: false
+  },
   ariaLabel: {
     type: String,
     required: true
@@ -37,7 +41,10 @@ const props = defineProps({
 
 const emit = defineEmits(["select"]);
 const controlRefs = ref([]);
-const selectedIndex = computed(() => Math.max(0, props.items.findIndex((item) => item.id === props.selectedId)));
+const selectedIndex = computed(() => {
+  const index = props.items.findIndex((item) => item.id === props.selectedId);
+  return index >= 0 || props.allowEmpty ? index : 0;
+});
 const groupRole = computed(() => (props.selectionRole === "tab" ? "tablist" : "radiogroup"));
 
 function isSelected(index) {
@@ -112,7 +119,7 @@ function moveSelection(event, index) {
       :selected="isSelected(index)"
       :selection-role="selectionRole"
       :aria-controls="selectionRole === 'tab' ? item.panelId : undefined"
-      :tabindex="isSelected(index) ? 0 : -1"
+      :tabindex="isSelected(index) || (selectedIndex === -1 && index === 0) ? 0 : -1"
       @click="selectItem(item)"
       @keydown="moveSelection($event, index)"
     />

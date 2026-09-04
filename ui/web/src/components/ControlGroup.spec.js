@@ -29,6 +29,19 @@ describe("ControlGroup", () => {
     wrapper.unmount();
   });
 
+  it("preserves an explicitly empty optional radio choice without selecting the first item", async () => {
+    const wrapper = mount(ControlGroup, {
+      props: { ariaLabel: "可选模型配置", items, selectedId: "", selectionRole: "radio", allowEmpty: true }
+    });
+
+    const options = wrapper.findAll('[role="radio"]');
+    expect(options.map((option) => option.attributes("aria-checked"))).toEqual(["false", "false", "false"]);
+    expect(options[0].attributes("tabindex")).toBe("0");
+
+    await options[1].trigger("click");
+    expect(wrapper.emitted("select")).toEqual([["present"]]);
+  });
+
   it("expresses a Workbench subspace as tabs linked to their panels", async () => {
     const wrapper = mount(ControlGroup, {
       props: {

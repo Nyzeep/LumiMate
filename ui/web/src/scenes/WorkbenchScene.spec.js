@@ -16,7 +16,7 @@ function createProps() {
   return {
     scene: { title: "工作台", titleEn: "Workbench" }, active: true, actions,
     state: {
-      runtime: { state: "idle", componentStatus: { missingRequired: [], asr: { kind: "asr", label: "ASR", ready: true, count: 1, status: "ready", note: "" }, llm: { kind: "llm", label: "LLM", ready: true, count: 1, status: "ready", note: "" }, tts: { kind: "tts", label: "TTS", ready: true, count: 1, status: "ready", note: "" } }, downloadState: "idle", downloadProgress: 0, downloadMessage: "", downloadCatalog: { asr: [], llm: [] } },
+      runtime: { state: "idle", componentStatus: { missingRequired: [], asr: { kind: "asr", label: "ASR", ready: true, count: 1, status: "ready", note: "" }, llm: { kind: "llm", label: "LLM", ready: true, count: 1, status: "ready", note: "" }, tts: { kind: "tts", label: "TTS", ready: true, count: 1, status: "ready", note: "" } }, downloadState: "idle", downloadProgress: 0, downloadMessage: "", downloadLogs: [], downloadCatalog: { asr: [], llm: [] } },
       agent: { currentTask, sessions: [] }
     },
     view: {
@@ -38,6 +38,31 @@ describe("WorkbenchScene", () => {
     await wrapper.get('textarea[placeholder^="任务目标"]').setValue("继续整理命令栏");
     await wrapper.get('button[aria-label="发起任务"]').trigger("click");
     expect(props.actions.agentStartTask).toHaveBeenCalledWith("后续任务", "继续整理命令栏");
+  });
+
+  it("keeps rich model inspection actions available through shared controls", async () => {
+    const props = createProps();
+    props.view.modelCatalog.llm = [{ id: "llm-1", path: "C:/models/llm-1", title: "推理核心", subtitle: "Ready", status: "ready", selected: true, tags: ["local"] }];
+    const wrapper = mount(WorkbenchScene, { props });
+
+    await wrapper.get('button[aria-label="检查模型：推理核心"]').trigger("click");
+    expect(props.actions.selectModel).toHaveBeenCalledWith("llm", "C:/models/llm-1");
+    expect(props.actions.openDrawer).toHaveBeenCalledWith("llm");
+  });
+
+  it("keeps provider choice and download forwarding accessible", async () => {
+    const props = createProps();
+    props.state.runtime.downloadCatalog.asr = [{
+      id: "asr-entry", title: "听觉模型", subtitle: "Small", sizeLabel: "1 GB", providers: { modelscope: "ms/asr", huggingface: "hf/asr" }
+    }];
+    const wrapper = mount(WorkbenchScene, { props });
+    const subspaces = wrapper.get('[aria-label="工作台子空间"]').findAll('[role="radio"]');
+    await subspaces[1].trigger("click");
+
+    const provider = wrapper.get('[aria-label="ASR 下载来源"]');
+    await provider.get('button[aria-label="HF"]').trigger("click");
+    await wrapper.get('button[aria-label="下载模型：听觉模型"]').trigger("click");
+    expect(props.actions.startModelDownload).toHaveBeenCalledWith("asr", "huggingface", "hf/asr", "听觉模型");
   });
 
   it("keeps a snapshot-restored permission wait safely cancellable", async () => {

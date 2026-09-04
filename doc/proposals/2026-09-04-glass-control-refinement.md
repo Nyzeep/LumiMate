@@ -31,8 +31,8 @@ LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但�
 
 ## Implementation Decisions
 
-1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态，以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）；内部处理玻璃表面、边缘高光、柔光、焦点、按下和减少动效。仅在真实场景几何确有差异时，场景可通过 card 的 glyph track、glyph、glyph SVG、min-height、padding、gap，或 icon 的最小 inline/block size CSS 自定义属性调整尺寸；业务状态和交互不通过这些样式属性表达。
-2. 建立仅用于互斥选择的 ControlGroup 深模块：调用方提供 items、selectedId、selectionRole（tab 或 radio）、方向、弱 accent 与 select 事件；模块内部复用 GlassControl，并集中保证任一时刻只有一个选中项、roving focus、键盘移动与正确 ARIA 语义。RailNav 保留导航职责，并采用 aria-current 当前项语义，不伪装成普通 radio 组。
+1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态、原生 buttonType（button、submit、reset）、以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）。调用方在确有富内容时可提供默认 slot，但仍由 GlassControl 持有 button 根节点、语义、焦点、按下、危险提示和禁用行为；内部处理玻璃表面、边缘高光、柔光和减少动效。仅在真实场景几何确有差异时，场景可通过 card 的 glyph track、glyph、glyph SVG、min-height、padding、gap，或 icon 的最小 inline/block size CSS 自定义属性调整尺寸；业务状态和交互不通过这些样式属性表达。
+2. 建立仅用于互斥选择的 ControlGroup 深模块：调用方提供 items、selectedId、selectionRole（tab 或 radio）、方向、弱 accent 与 select 事件；模块内部复用 GlassControl，并集中保证任一时刻只有一个选中项、roving focus、键盘移动与正确 ARIA 语义。仅当既有业务确有“尚未选择”的可选状态时，调用方可显式启用 allowEmpty；此时所有项可不选中，但首项仍是键盘进入点，不能用于一般必选组。RailNav 保留导航职责，并采用 aria-current 当前项语义，不伪装成普通 radio 组。
 3. 现有行动卡和轨道图标控件变为 GlassControl 的薄适配层。复杂业务内容保留其现有结构，只接入统一呈现与状态约定，避免按场景新增浅层按钮包装。
 4. 场景色只能作为弱上下文强调；priority 表示当前区域的重要性，intent 表示中性或危险。拒绝、取消、清空、释放等操作不得以 primary-neutral 组合出现，也不得只依赖颜色传达风险。
 5. Workbench 采用 Command rail：计划、任务轨迹和证据为主阅读列；当前阶段一个 primary 命令进入命令栏；次级命令编组；危险命令置入单独标识的危险区。Context dock 仅可用于显式阶段性审批，不作为全局常驻结构。
@@ -44,8 +44,8 @@ LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但�
 
 ## Testing Decisions
 
-1. GlassControl 是最高层的可复用测试 seam。Vitest 测试外部可观察行为：可访问名称、键盘焦点可达性、禁用状态不触发动作、无图标控制没有空占位、危险意图具有文字和语义提示。block 全宽、焦点可见性与减少动效属于真实渲染行为，在浏览器与 Tauri 的视觉验收中验证。
-2. ControlGroup 测试 tab 或 radio 在任一时刻只保留一个选中项，并输出正确的 aria-selected 或 aria-checked；RailNav 当前项输出 aria-current。
+1. GlassControl 是最高层的可复用测试 seam。Vitest 测试外部可观察行为：可访问名称、键盘焦点可达性、禁用状态不触发动作、无图标控制没有空占位、危险意图具有文字和语义提示，以及带富内容 slot 的原生 submit 行为。block 全宽、焦点可见性与减少动效属于真实渲染行为，在浏览器与 Tauri 的视觉验收中验证。
+2. ControlGroup 测试必选 tab 或 radio 在任一时刻只保留一个选中项，并输出正确的 aria-selected 或 aria-checked；显式 allowEmpty 的可选 radio 可安全输出全未选状态并保留键盘进入点；RailNav 当前项输出 aria-current。
 3. Workbench 在用户可见 seam 上测试命令栏：每个状态区域至多一个 primary，确认或允许清晰可达，拒绝或取消不与 primary 混同，且既有 action 事件仍正确发出。
 4. 建立最小 Vue 测试基架，因为当前前端没有现成 UI 测试脚本。测试关注行为与语义，不锁定内部 class 或实现细节。
 5. 每个相关 slice 至少运行前端构建；最终手工视觉验收覆盖 1440×900、1280×720、980px 和 860px，以及悬停、按下、键盘焦点、禁用、危险态和减少动效。浏览器与 Tauri WebView2 都需要 spot-check。

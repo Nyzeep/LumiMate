@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import ActionButton from "../components/ActionButton.vue";
+import GlassControl from "../components/GlassControl.vue";
 import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import TechText from "../components/TechText.vue";
@@ -96,6 +97,7 @@ const voiceBars = computed(() =>
             type="text"
             autocomplete="off"
             placeholder="轻声说点什么..."
+            aria-label="消息输入"
             @focus="composerFocused = true"
             @blur="composerFocused = false"
             @input="actions.setComposerText($event.target.value)"
@@ -103,9 +105,16 @@ const voiceBars = computed(() =>
           <div class="voice-wave" aria-hidden="true">
             <span v-for="(value, index) in voiceBars" :key="index" :style="{ transform: `scaleY(${value})` }"></span>
           </div>
-          <button type="submit" class="dock-send" aria-label="发送消息">
-            <svg viewBox="0 0 24 24"><path d="M12 5 19 18H5Z" /></svg>
-          </button>
+          <GlassControl
+            class="dock-send"
+            label="发送消息"
+            kind="icon"
+            button-type="submit"
+            priority="primary"
+            accent="chat"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5 19 18H5Z" /></svg>
+          </GlassControl>
         </form>
 
         <div class="chat-actions chat-actions--dock" role="group" aria-label="对话操作">
@@ -132,3 +141,36 @@ const voiceBars = computed(() =>
     </div>
   </section>
 </template>
+
+<style scoped>
+.dock-send {
+  --glass-control-icon-min-inline-size: 44px;
+  --glass-control-icon-min-block-size: 44px;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.dock-send :deep(.glass-control__copy) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.dock-send :deep(svg) {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: rgba(245, 234, 223, 0.82);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+</style>

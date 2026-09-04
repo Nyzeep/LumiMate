@@ -54,6 +54,16 @@ describe("GlassControl", () => {
     expect(wrapper.get("button").attributes("aria-pressed")).toBe("true");
   });
 
+  it("supports submit controls with caller-owned rich content", () => {
+    const wrapper = mount(GlassControl, {
+      props: { label: "发送消息", buttonType: "submit", kind: "icon" },
+      slots: { default: '<span class="send-copy">发送</span>' }
+    });
+
+    expect(wrapper.get("button").attributes("type")).toBe("submit");
+    expect(wrapper.get(".send-copy").text()).toBe("发送");
+  });
+
   it("remains reachable through the keyboard focus order", () => {
     const wrapper = mount(GlassControl, {
       attachTo: document.body,
