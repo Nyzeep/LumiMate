@@ -38,7 +38,6 @@ defineProps({
 
         <HoloCard class="settings-group-card">
           <p class="scene-kicker">启动行为</p>
-          <OrbitalIconButton label="更新检查" :icon-path="ICON_PATHS.startup" semantic="system" @click="actions.toggleUpdateCheck" />
           <p class="panel-note">当前策略：{{ state.app.checkUpdateOnStartup ? "启动时检查更新" : "保持静默启动" }}</p>
         </HoloCard>
 

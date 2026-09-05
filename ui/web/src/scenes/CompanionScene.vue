@@ -52,8 +52,8 @@ defineProps({
         <HoloCard class="info-card" tone="strong">
           <p class="scene-kicker">陪伴侧栏</p>
           <div class="companion-tools">
-            <OrbitalIconButton label="记忆片段" :icon-path="ICON_PATHS.memory" semantic="companion" @click="actions.navigate('home')" />
-            <OrbitalIconButton label="情绪轨迹" :icon-path="ICON_PATHS.mood" semantic="companion" @click="actions.navigate('personality')" />
+            <OrbitalIconButton label="回到核心" :icon-path="ICON_PATHS.memory" semantic="companion" @click="actions.navigate('home')" />
+            <OrbitalIconButton label="人格空间" :icon-path="ICON_PATHS.mood" semantic="companion" @click="actions.navigate('personality')" />
             <OrbitalIconButton label="对话记录" :icon-path="ICON_PATHS.chat" semantic="chat" @click="actions.navigate('chat')" />
             <OrbitalIconButton label="存储概览" :icon-path="ICON_PATHS.storage" semantic="system" @click="actions.navigate('storage')" />
           </div>

@@ -87,13 +87,6 @@ const view = computed(() => ({
   isFullscreen: state.window.isFullscreen
 }));
 
-const windowDrag = {
-  active: false,
-  x: 0,
-  y: 0,
-  pointerId: null
-};
-
 async function beginConversation() {
   noteActivity();
   if (!view.value.conversationReady) {
@@ -123,6 +116,13 @@ async function switchModels() {
   await navigate("loading", true);
 }
 
+async function selectDrawerModel(path) {
+  const ok = await bridgeActions.selectModel(drawerData.value.type, path);
+  if (ok) {
+    actions.closeDrawer();
+  }
+}
+
 const actions = {
   navigate,
   setSceneGroup,
@@ -130,9 +130,7 @@ const actions = {
   loadModels,
   switchModels,
   releaseCache: bridgeActions.releaseCache,
-  scanModels: bridgeActions.scanModels,
   scanComponents: bridgeActions.scanComponents,
-  openModelGalaxy: bridgeActions.openModelGalaxy,
   startModelDownload: bridgeActions.startModelDownload,
   cancelModelDownload: bridgeActions.cancelModelDownload,
   selectModel: bridgeActions.selectModel,
@@ -147,7 +145,6 @@ const actions = {
   agentResumeTask: bridgeActions.agentResumeTask,
   agentCancelTask: bridgeActions.agentCancelTask,
   agentResumeSession: bridgeActions.agentResumeSession,
-  agentListSessions: bridgeActions.agentListSessions,
   async sendCurrentText() {
     noteActivity();
     await bridgeActions.sendCurrentText();
@@ -163,16 +160,13 @@ const actions = {
   closeDrawer() {
     state.ui.drawerOpen = false;
   },
+  selectDrawerModel,
   async toggleLanguage() {
     state.app.language = state.app.language === "zh-CN" ? "en-US" : "zh-CN";
     await bridgeActions.saveSettings();
   },
   async toggleReduceMotion() {
     state.app.reduceMotion = !state.app.reduceMotion;
-    await bridgeActions.saveSettings();
-  },
-  async toggleUpdateCheck() {
-    state.app.checkUpdateOnStartup = !state.app.checkUpdateOnStartup;
     await bridgeActions.saveSettings();
   },
   async setAmbientMode(mode) {
@@ -185,40 +179,6 @@ const actions = {
   toggleWindowMode: bridgeActions.toggleWindowMode,
   closeWindow: bridgeActions.closeWindow
 };
-
-function beginWindowDrag(event) {
-  if (state.window.isFullscreen || event.button !== 0 || event.target?.closest?.("button, input, textarea, select")) {
-    return;
-  }
-  windowDrag.active = true;
-  windowDrag.x = event.screenX;
-  windowDrag.y = event.screenY;
-  windowDrag.pointerId = event.pointerId;
-  event.currentTarget?.setPointerCapture?.(event.pointerId);
-}
-
-async function dragWindow(event) {
-  if (!windowDrag.active || state.window.isFullscreen) {
-    return;
-  }
-  const dx = Math.round(event.screenX - windowDrag.x);
-  const dy = Math.round(event.screenY - windowDrag.y);
-  if (!dx && !dy) {
-    return;
-  }
-  windowDrag.x = event.screenX;
-  windowDrag.y = event.screenY;
-  await bridgeActions.moveWindowBy(dx, dy);
-}
-
-function endWindowDrag(event) {
-  if (!windowDrag.active) {
-    return;
-  }
-  windowDrag.active = false;
-  event.currentTarget?.releasePointerCapture?.(windowDrag.pointerId);
-  windowDrag.pointerId = null;
-}
 
 function clearBootFallback() {
   if (bootFallbackTimer) {
@@ -296,15 +256,7 @@ onMounted(async () => {
 
     <div class="content-stage">
       <header class="shell-header">
-        <div
-          class="shell-drag-region"
-          data-promoted-layer="true"
-          @pointerdown="beginWindowDrag"
-          @pointermove="dragWindow"
-          @pointerup="endWindowDrag"
-          @pointercancel="endWindowDrag"
-          @pointerleave="endWindowDrag"
-        >
+        <div class="shell-drag-region" data-promoted-layer="true">
           <TechText as="p" tone="muted" mono>LUMIMATE</TechText>
           <div class="shell-header__title-stack">
             <strong>{{ activeSceneLabel }}</strong>
@@ -371,7 +323,7 @@ onMounted(async () => {
       :options="drawerData.options"
       @close="actions.closeDrawer"
       @open-path="actions.openLocalFolder(drawerData.path)"
-      @select="(path) => actions.selectModel(drawerData.type, path)"
+      @select="actions.selectDrawerModel"
     />
     <button
       type="button"

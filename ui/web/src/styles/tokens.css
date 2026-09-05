@@ -24,12 +24,18 @@
   --text-hero: clamp(48px, 4.2vw, 82px);
   --text-section: clamp(30px, 2.3vw, 44px);
   --text-card: 18px;
+  --text-title: 16px;
   --text-body: 15px;
   --text-body-compact: 14px;
   --text-meta: 13px;
   --text-status: 12px;
+  --text-micro: 10px;
+  --weight-display: 200;
+  --weight-light: 300;
   --line-body: 1.72;
   --line-tight: 1.34;
+  --line-display: 1.05;
+  --line-heading: 1.6;
   --tracking-mono: 1px;
 
   --space-1: 8px;

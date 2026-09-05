@@ -517,14 +517,8 @@ export function useBridgeState() {
     async releaseCache() {
       return runtimeCommand("/api/model/release-cache");
     },
-    async scanModels() {
-      return runtimeCommand("/api/model/scan");
-    },
     async scanComponents() {
       return runtimeCommand("/api/model/scan-components");
-    },
-    async openModelGalaxy() {
-      return runtimeCommand("/api/model/open-galaxy");
     },
     async startModelDownload(kind, provider, modelId, displayName) {
       return runtimeCommand("/api/model/download/start", { kind, provider, modelId, displayName });
@@ -595,17 +589,11 @@ export function useBridgeState() {
     async agentResumeSession(sessionId, goal) {
       return runtimeCommand("/api/agent/session/resume", { sessionId, goal, workspace: state.app.projectRoot });
     },
-    async agentListSessions() {
-      return runtimeRequest("/api/agent/session/list");
-    },
     minimizeWindow,
     toggleWindowMode,
     async closeWindow() {
       await shutdownBackend();
       return closeWindow();
-    },
-    async moveWindowBy() {
-      return false;
     }
   };
 

@@ -33,15 +33,15 @@ const missingRequired = computed(() => componentStatus.value.missingRequired || 
 const shouldOpenGalaxy = computed(() => props.active && missingRequired.value.length > 0);
 const downloadBusy = computed(() => ["scanning", "downloading", "organizing"].includes(props.state.runtime.downloadState));
 const downloadProgressRatio = computed(() => Math.max(0, Math.min(1, Number(props.state.runtime.downloadProgress || 0) / 100)));
+const taskState = computed(() => props.view.agent.currentTask?.state || "");
 
 watch(
   shouldOpenGalaxy,
-  async (value) => {
+  (value) => {
     if (!value) {
       return;
     }
     local.subspace = "galaxy";
-    await props.actions.openModelGalaxy?.();
   },
   { immediate: true }
 );
@@ -67,9 +67,6 @@ function modelStatusLabel(status) {
 
 function setSubspace(value) {
   local.subspace = value;
-  if (value === "galaxy") {
-    void props.actions.openModelGalaxy?.();
-  }
 }
 
 function providerLabel(provider) {
@@ -295,7 +292,6 @@ async function resumeSession(sessionId) {
 
         <div class="span-12 action-row action-row--wide action-row--workbench">
           <ActionButton label="扫描节点" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" @click="actions.scanComponents" />
-          <ActionButton label="星系选择" subtitle="Galaxy" :icon-path="ICON_PATHS.workbench" semantic="model" @click="setSubspace('galaxy')" />
           <ActionButton label="加载模型" subtitle="Load" :icon-path="ICON_PATHS.load" tier="primary" semantic="model" @click="actions.loadModels" />
           <ActionButton label="切换核心" subtitle="Switch" :icon-path="ICON_PATHS.switch" semantic="model" @click="actions.switchModels" />
           <ActionButton label="释放缓存" subtitle="Release" :icon-path="ICON_PATHS.release" semantic="system" @click="actions.releaseCache" />
@@ -414,7 +410,6 @@ async function resumeSession(sessionId) {
 
         <div class="span-12 action-row action-row--wide action-row--workbench action-row--galaxy">
           <ActionButton label="重新扫描" subtitle="Scan" :icon-path="ICON_PATHS.scan" semantic="model" @click="actions.scanComponents" />
-          <ActionButton label="返回核心舱" subtitle="Core" :icon-path="ICON_PATHS.workbench" semantic="model" @click="setSubspace('core')" />
           <ActionButton
             v-if="downloadBusy"
             label="取消下载"
@@ -462,9 +457,10 @@ async function resumeSession(sessionId) {
             <div v-if="view.agent.currentTask.failure" class="agent-failure-card">
               <p>失败原因：{{ view.agent.currentTask.failure.reason }}</p>
             </div>
-            <div class="action-row action-row--agent">
-              <ActionButton label="暂停" subtitle="Pause" semantic="system" @click="pauseTask" />
-              <ActionButton label="恢复" subtitle="Resume" semantic="model" @click="resumeTask" />
+            <!-- 九态显隐：running→暂停/取消，paused→恢复/取消；planning/cancelling/cancelled/completed/failed/draft 仅显示状态文案 -->
+            <div v-if="taskState === 'running' || taskState === 'paused'" class="action-row action-row--agent">
+              <ActionButton v-if="taskState === 'running'" label="暂停" subtitle="Pause" semantic="system" @click="pauseTask" />
+              <ActionButton v-if="taskState === 'paused'" label="恢复" subtitle="Resume" semantic="model" @click="resumeTask" />
               <ActionButton label="取消" subtitle="Cancel" semantic="system" @click="cancelTask" />
             </div>
           </HoloCard>
@@ -545,7 +541,7 @@ async function resumeSession(sessionId) {
 
 .agent-state {
   color: var(--accent-gold, #f7c873);
-  font-size: 0.9rem;
+  font-size: var(--text-body-compact);
   margin: 0.25rem 0 0.5rem;
 }
 
@@ -554,7 +550,7 @@ async function resumeSession(sessionId) {
   margin: 0;
   padding-left: 1rem;
   color: var(--text-secondary, #b7ad9a);
-  font-size: 0.85rem;
+  font-size: var(--text-meta);
 }
 
 .agent-permission-card,

@@ -57,6 +57,6 @@ svg {
 
 .mono-inline {
   font-family: var(--font-mono);
-  font-weight: 300;
+  font-weight: var(--weight-light);
   letter-spacing: var(--tracking-mono);
 }

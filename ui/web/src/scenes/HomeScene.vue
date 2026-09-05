@@ -62,7 +62,6 @@ defineProps({
       </div>
 
       <div class="span-12 action-row action-row--home">
-        <ActionButton label="进入对话" subtitle="Chat Space" :icon-path="ICON_PATHS.chat" semantic="chat" @click="actions.navigate('chat')" />
         <ActionButton
           label="陪伴空间"
           subtitle="Companion Space"
