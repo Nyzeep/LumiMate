@@ -6,10 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, FrozenSet, Mapping
 
-from services.agent.command_policy import (
-    ALLOWED_CHECK_COMMANDS,
-    classify_bash_command,
-)
+from services.agent.command_policy import classify_bash_command
 from services.agent.models import Grant
 
 
@@ -53,8 +50,6 @@ CATEGORY_FOR_ACTION: Mapping[str, str] = {
     "lint": "lint",
     "typecheck": "typecheck",
 }
-
-WHITELISTED_CHECK_COMMANDS = ALLOWED_CHECK_COMMANDS
 
 HIGH_RISK_COMMAND_KEYWORDS: tuple[str, ...] = (
     "install",

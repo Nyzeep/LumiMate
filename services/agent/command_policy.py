@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Literal
 
 
@@ -63,8 +64,13 @@ _READ_ONLY_BRANCH_OPTIONS = frozenset(
 )
 
 
+@lru_cache(maxsize=256)
 def classify_bash_command(command: str | None) -> BashCommandKind | None:
-    """Classify one shell command, rejecting command composition and writes."""
+    """Classify one shell command, rejecting command composition and writes.
+
+    纯函数：一次工具决策会经白名单、classify_action、category_for_action
+    多次到达这里，缓存避免对同一命令串重复解析。
+    """
     normalized = str(command or "").strip().lower()
     if not normalized or any(marker in normalized for marker in _SHELL_CONTROL_MARKERS):
         return None
