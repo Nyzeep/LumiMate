@@ -1,4 +1,5 @@
 <script setup>
+import GlassControl from "../components/GlassControl.vue";
 import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
@@ -45,7 +46,15 @@ defineProps({
       </div>
 
       <div class="span-12 action-row">
-        <button type="button" class="slender-button" @click.prevent="actions.releaseCache">安全释放缓存</button>
+        <GlassControl
+          label="安全释放缓存"
+          subtitle="Release cache"
+          kind="compact"
+          priority="quiet"
+          intent="danger"
+          accent="system"
+          @click="actions.releaseCache"
+        />
       </div>
     </div>
   </section>

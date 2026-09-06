@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from "vue";
-import { useHoverIntent } from "../composables/useHoverIntent";
+import GlassControl from "./GlassControl.vue";
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps({
   label: {
@@ -13,7 +15,7 @@ const props = defineProps({
   },
   iconPath: {
     type: String,
-    required: true
+    default: ""
   },
   tier: {
     type: String,
@@ -23,11 +25,19 @@ const props = defineProps({
     type: String,
     default: "core"
   },
+  intent: {
+    type: String,
+    default: "neutral"
+  },
   active: {
     type: Boolean,
     default: false
   },
   block: {
+    type: Boolean,
+    default: false
+  },
+  truncateCopy: {
     type: Boolean,
     default: false
   },
@@ -37,36 +47,26 @@ const props = defineProps({
   }
 });
 
-defineEmits(["click"]);
-
-const { isEngaged, style, handlers } = useHoverIntent({
-  disabled: computed(() => props.disabled)
-});
+const emit = defineEmits(["click"]);
+const priority = computed(() => (["primary", "quiet"].includes(props.tier) ? props.tier : "secondary"));
+const selected = computed(() => (props.active ? true : null));
 </script>
 
 <template>
-  <button
-    type="button"
-    class="action-button"
-    :class="[`action-button--${tier}`, `action-button--${semantic}`, { 'is-active': active, 'is-block': block }]"
+  <GlassControl
+    v-bind="$attrs"
+    kind="card"
+    :label="label"
+    :subtitle="subtitle"
+    :icon-path="iconPath"
+    icon-view-box="0 0 64 64"
+    :priority="priority"
+    :intent="intent"
+    :accent="semantic"
     :disabled="disabled"
-    :data-hovered="isEngaged ? 'true' : 'false'"
-    :style="style"
-    data-promoted-layer="true"
-    v-on="handlers"
-    @click.prevent="$emit('click')"
-  >
-    <span class="action-button__glow" aria-hidden="true"></span>
-    <span class="action-button__glyph" aria-hidden="true">
-      <svg viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r="22" />
-        <circle cx="32" cy="32" r="13" />
-        <path :d="iconPath" />
-      </svg>
-    </span>
-    <span class="action-button__copy">
-      <strong>{{ label }}</strong>
-      <small v-if="subtitle">{{ subtitle }}</small>
-    </span>
-  </button>
+    :selected="selected"
+    :block="block"
+    :truncate-copy="truncateCopy"
+    @click="emit('click', $event)"
+  />
 </template>

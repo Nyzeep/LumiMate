@@ -23,8 +23,6 @@
 .slender-button,
 .chat-dock,
 .model-drawer,
-.model-drawer__options button,
-.mode-pills button,
 .model-card,
 .rail-nav__shell,
 .rail-nav__readout,
@@ -90,8 +88,6 @@
 .dock-send,
 .model-drawer__close,
 .slender-button,
-.mode-pills button,
-.model-drawer__options button,
 .model-card,
 .action-button,
 .orbital-icon-button__halo {
@@ -115,9 +111,7 @@
 .action-button__glow,
 .orbital-icon-button__glow,
 .chat-dock__glow,
-.slender-button::after,
-.mode-pills button::after,
-.model-drawer__options button::after {
+.slender-button::after {
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -140,11 +134,7 @@
 .action-button.is-active .action-button__glow,
 .model-card:hover::after,
 .model-card.is-selected::after,
-.model-drawer__options button:hover::after,
-.model-drawer__options button.is-active::after,
 .slender-button:hover::after,
-.mode-pills button:hover::after,
-.mode-pills button.is-active::after,
 .orbital-icon-button[data-hovered="true"] .orbital-icon-button__glow,
 .orbital-icon-button.is-active .orbital-icon-button__glow,
 .chat-dock.is-focused .chat-dock__glow,
@@ -352,11 +342,6 @@
 .rail-nav__button:hover .rail-glyph__rotor,
 .rail-nav__group-button:hover .rail-glyph__rotor {
   transform: rotate(18deg);
-}
-
-.rail-nav__button.is-active .rail-glyph__rotor,
-.rail-nav__group-button.is-active .rail-glyph__rotor {
-  animation: lumi-orbit calc(var(--motion-orbit) * 1.25) linear infinite;
 }
 
 .rail-nav__button:hover .rail-glyph,
@@ -978,38 +963,6 @@
   border: var(--border-hairline) solid var(--color-line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
-}
-
-.model-drawer__options {
-  display: grid;
-  gap: 10px;
-  margin-top: 24px;
-  max-height: 40vh;
-  overflow: auto;
-  padding-right: 4px;
-}
-
-.model-drawer__options button {
-  display: grid;
-  gap: 4px;
-  justify-items: start;
-  min-height: 58px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  text-align: left;
-}
-
-.model-drawer__options span {
-  color: var(--color-text);
-  font-size: var(--text-meta);
-}
-
-.model-drawer__options small {
-  color: var(--color-dim);
-  font-size: var(--text-status);
-  font-family: var(--font-mono);
-  letter-spacing: var(--tracking-mono);
-  text-transform: uppercase;
 }
 
 .drawer-scrim {

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import ActionButton from "../components/ActionButton.vue";
+import GlassControl from "../components/GlassControl.vue";
 import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import TechText from "../components/TechText.vue";
@@ -45,11 +46,6 @@ const voiceBars = computed(() =>
           <p class="panel-note">{{ state.chat.status }}</p>
         </HoloCard>
 
-        <div class="chat-actions">
-          <ActionButton label="开始倾听" subtitle="Listen" :icon-path="ICON_PATHS.listen" semantic="chat" @click="actions.beginConversation" />
-          <ActionButton label="回到安静" subtitle="Quiet" :icon-path="ICON_PATHS.quiet" semantic="companion" @click="actions.stopVoice" />
-          <ActionButton label="清空星线" subtitle="Clear" :icon-path="ICON_PATHS.clear" semantic="system" @click="actions.clearChat" />
-        </div>
       </div>
 
       <div class="span-6 chat-focus-shell">
@@ -101,6 +97,7 @@ const voiceBars = computed(() =>
             type="text"
             autocomplete="off"
             placeholder="轻声说点什么..."
+            aria-label="消息输入"
             @focus="composerFocused = true"
             @blur="composerFocused = false"
             @input="actions.setComposerText($event.target.value)"
@@ -108,10 +105,24 @@ const voiceBars = computed(() =>
           <div class="voice-wave" aria-hidden="true">
             <span v-for="(value, index) in voiceBars" :key="index" :style="{ transform: `scaleY(${value})` }"></span>
           </div>
-          <button type="submit" class="dock-send" aria-label="发送消息">
-            <svg viewBox="0 0 24 24"><path d="M12 5 19 18H5Z" /></svg>
-          </button>
+          <GlassControl
+            class="chat-send-control"
+            label="发送消息"
+            visually-hide-copy
+            bare-glyph
+            kind="icon"
+            button-type="submit"
+            priority="primary"
+            accent="chat"
+            icon-path="M12 5 19 18H5Z"
+          />
         </form>
+
+        <div class="chat-actions chat-actions--dock" role="group" aria-label="对话操作">
+          <ActionButton label="开始倾听" subtitle="Listen" :icon-path="ICON_PATHS.listen" tier="primary" semantic="chat" @click="actions.beginConversation" />
+          <ActionButton label="回到安静" subtitle="Quiet" :icon-path="ICON_PATHS.quiet" tier="quiet" semantic="companion" @click="actions.stopVoice" />
+          <ActionButton label="清空星线" subtitle="Clear" :icon-path="ICON_PATHS.clear" tier="quiet" intent="danger" semantic="system" @click="actions.clearChat" />
+        </div>
       </div>
 
       <div class="span-3 scene-side-stack">
@@ -131,3 +142,13 @@ const voiceBars = computed(() =>
     </div>
   </section>
 </template>
+
+<style scoped>
+.chat-send-control {
+  --glass-control-icon-inline-size: 44px;
+  --glass-control-icon-block-size: 44px;
+  --glass-control-icon-padding: 0;
+  --glass-control-icon-radius: 50%;
+  --glass-control-glyph-size: 18px;
+}
+</style>

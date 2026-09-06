@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, watch } from "vue";
 import AmbientModeSwitch from "../components/AmbientModeSwitch.vue";
 import BootVeil from "../components/BootVeil.vue";
 import DiagnosticsHud from "../components/DiagnosticsHud.vue";
+import GlassControl from "../components/GlassControl.vue";
 import ModelDrawer from "../components/ModelDrawer.vue";
 import RailNav from "../components/RailNav.vue";
 import RuntimeAmbientLayer from "../components/RuntimeAmbientLayer.vue";
@@ -270,20 +271,39 @@ onMounted(async () => {
         </p>
 
         <div class="shell-header__actions" aria-label="窗口控制" data-promoted-layer="true">
-          <button type="button" class="window-action" aria-label="最小化" @click.prevent="actions.minimizeWindow">
-            <svg viewBox="0 0 24 24"><path :d="ICON_PATHS.minimize" /></svg>
-          </button>
-          <button
-            type="button"
-            class="window-action"
-            :aria-label="state.window.isFullscreen ? '窗口化' : '全屏'"
-            @click.prevent="actions.toggleWindowMode"
-          >
-            <svg viewBox="0 0 24 24"><path :d="state.window.isFullscreen ? ICON_PATHS.expand : ICON_PATHS.restore" /></svg>
-          </button>
-          <button type="button" class="window-action window-action--close" aria-label="关闭" @click.prevent="actions.closeWindow">
-            <svg viewBox="0 0 24 24"><path :d="ICON_PATHS.close" /></svg>
-          </button>
+          <GlassControl
+            class="window-control"
+            kind="icon"
+            priority="quiet"
+            accent="system"
+            label="最小化"
+            visually-hide-copy
+            bare-glyph
+            :icon-path="ICON_PATHS.minimize"
+            @click="actions.minimizeWindow"
+          />
+          <GlassControl
+            class="window-control"
+            kind="icon"
+            priority="quiet"
+            accent="system"
+            :label="state.window.isFullscreen ? '窗口化' : '全屏'"
+            visually-hide-copy
+            bare-glyph
+            :icon-path="state.window.isFullscreen ? ICON_PATHS.expand : ICON_PATHS.restore"
+            @click="actions.toggleWindowMode"
+          />
+          <GlassControl
+            class="window-control window-control--close"
+            kind="compact"
+            priority="quiet"
+            intent="danger"
+            accent="system"
+            bare-glyph
+            label="关闭窗口"
+            :icon-path="ICON_PATHS.close"
+            @click="actions.closeWindow"
+          />
         </div>
       </header>
 
@@ -329,6 +349,9 @@ onMounted(async () => {
       type="button"
       class="drawer-scrim"
       :class="{ 'is-open': state.ui.drawerOpen }"
+      :aria-hidden="!state.ui.drawerOpen"
+      :disabled="!state.ui.drawerOpen"
+      :tabindex="state.ui.drawerOpen ? 0 : -1"
       aria-label="关闭配置抽屉"
       @click.prevent="actions.closeDrawer"
     ></button>
@@ -336,3 +359,19 @@ onMounted(async () => {
     <DiagnosticsHud :visible="diagnostics.visible" :diagnostics="diagnostics" />
   </main>
 </template>
+
+<style scoped>
+.window-control {
+  --glass-control-icon-inline-size: 46px;
+  --glass-control-icon-block-size: 46px;
+  --glass-control-icon-padding: 0;
+  --glass-control-glyph-size: 18px;
+}
+
+.window-control--close {
+  --glass-control-compact-min-inline-size: 122px;
+  --glass-control-compact-min-block-size: 46px;
+  --glass-control-compact-padding: 5px 10px;
+  --glass-control-glyph-size: 28px;
+}
+</style>

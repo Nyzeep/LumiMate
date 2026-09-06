@@ -1,0 +1,66 @@
+# LumiMate 玻璃控制系统与 Workbench 命令栏优化规格
+
+> 状态：ready-for-agent
+> 日期：2026-09-04
+> 原型依据：prototype-ui-glass-control-language 分支的提交 67e1352；选定 B（Command rail）作为正式布局基线。
+
+## Problem Statement
+
+LumiMate 已有深蓝、琥珀与环境背景形成的稳定空间氛围，但可交互控制分散在多套平行样式中。主操作、辅助操作、导航、选择器与破坏性操作常以相近的大小、色彩和泛光出现，用户必须先读文字才能理解优先级。Workbench 尤其存在多个同权大按钮并列的问题，计划确认、暂停、恢复和取消的操作逻辑没有清晰的视觉编排。持续轨道和呼吸动效也会让普通控件与真正的运行状态争夺注意力。
+
+## Solution
+
+在不改变背景素材、RuntimeAmbientLayer 和深蓝琥珀色调的前提下，建立统一的玻璃控制系统。控制系统通过操作层级和操作意图表达用户该先做什么、何时应谨慎，而不是依赖场景颜色传达风险。Workbench 采用命令栏布局：任务证据与计划留在主阅读列，当前阶段唯一主操作进入专属命令栏，辅助操作分组，拒绝、取消和清理放入有文字标识的危险区。
+
+## User Stories
+
+1. 作为 LumiMate 用户，我希望背景和空间色调保持熟悉，以便界面升级不会破坏已有的陪伴氛围。
+2. 作为首次进入一个空间的用户，我希望一眼识别该区域唯一的主操作，以便无需比较多个同样醒目的按钮。
+3. 作为键盘用户，我希望每个控制都有可见焦点与可访问名称，以便不依赖鼠标完成导航和确认。
+4. 作为偏好减少动态效果的用户，我希望普通控件不持续旋转或呼吸，以便界面保持安静且舒适。
+5. 作为使用首页、聊天和 Companion 空间的用户，我希望行动卡、图标控制和紧凑按钮有一致的半透明表面、边缘高光和按下反馈，以便学习一次即可使用各空间。
+6. 作为 Workbench 用户，我希望计划、证据和当前命令分区展示，以便先理解任务事实，再决定是否批准。
+7. 作为批准计划或权限的用户，我希望确认操作清晰成为当前主操作，以便不会误选辅助按钮。
+8. 作为准备拒绝、取消、清空或释放资源的用户，我希望危险操作与主操作分开且有明确文字，以便知道其后果。
+9. 作为管理任务的用户，我希望暂停、恢复和取消只在适合的任务状态附近出现，以便避免无关操作长期占据界面。
+10. 作为使用导航与模式选择的用户，我希望选中状态同时具有正确语义与视觉反馈，以便理解当前空间或当前选择。
+11. 作为维护者，我希望新增场景只需声明控制种类、层级和意图，以便不复制玻璃、柔光、焦点与动效实现。
+12. 作为维护者，我希望各场景现有事件和业务行为保持不变，以便这次界面升级不会改变 Runtime、Bridge 或 Agent 授权流程。
+13. 作为桌面用户，我希望在 1440×900 的主窗口以及收缩尺寸下操作组不溢出，以便重排后的逻辑在不同窗口尺寸仍成立。
+14. 作为 Tauri 用户，我希望半透明和柔光在浏览器与 WebView2 中均保持可读，以便原型的视觉结论能够真实落地。
+
+## Implementation Decisions
+
+1. 建立 GlassControl 深模块作为控件呈现与交互状态的唯一 seam。它向调用方公开 kind（card、icon、compact）、priority（primary、secondary、quiet）、intent（neutral、danger）、文本、可选图标、禁用、选中、可选的 block 全宽布局状态、原生 buttonType（button、submit、reset）、visuallyHideCopy、bareGlyph、truncateCopy，以及受限的视觉 accent（core、chat、companion、model、system；未知值回退 core）。调用方在确有富内容时可提供默认 slot，但仍由 GlassControl 持有 button 根节点、语义、焦点、按下、危险提示和禁用行为；危险文字独立于 slot 始终可见，内部处理玻璃表面、边缘高光、柔光和减少动效。仅在真实场景几何确有差异时，场景可通过 GlassControl 的受限变量调整呈现：card 的 `--glass-control-card-{glyph-track-size,glyph-size,min-inline-size,min-height,padding,gap}` 与 `--glass-control-glyph-svg-size`；icon 的 `--glass-control-icon-{inline-size,block-size,min-inline-size,min-block-size,padding,radius}`；compact 的 `--glass-control-compact-{min-inline-size,min-block-size,padding}`；以及通用 `--glass-control-{glyph-size,radius,justify-content,text-align}` 和 `--glass-control-{label,subtitle}-{font-family,font-size,letter-spacing,text-transform}`。调用方不得定位内部 copy/glyph 节点或伪元素，业务状态和交互不通过这些样式属性表达。
+2. 建立仅用于互斥选择的 ControlGroup 深模块：调用方提供 items、selectedId、selectionRole（tab 或 radio）、方向、弱 accent、可选 block/visuallyHideCopy 呈现状态与 select 事件；模块内部复用 GlassControl，并集中保证任一时刻只有一个选中项、roving focus、键盘移动与正确 ARIA 语义。仅当既有业务确有“尚未选择”的可选 radio 状态时，调用方可显式启用 allowEmpty；此时所有 radio 可不选中，但首项仍是键盘进入点；tab 始终回退到一个选中项。RailNav 保留导航职责，并采用 aria-current 当前项语义，不伪装成普通 radio 组。
+3. 现有行动卡和轨道图标控件变为 GlassControl 的薄适配层。复杂业务内容保留其现有结构，只接入统一呈现与状态约定，避免按场景新增浅层按钮包装。
+4. 场景色只能作为弱上下文强调；priority 表示当前区域的重要性，intent 表示中性或危险。拒绝、取消、清空、释放等操作不得以 primary-neutral 组合出现，也不得只依赖颜色传达风险。
+5. Workbench 采用 Command rail：计划、任务轨迹和证据为主阅读列；当前阶段一个 primary 命令进入命令栏；次级命令编组；危险命令置入单独标识的危险区。Context dock 仅可用于显式阶段性审批，不作为全局常驻结构。
+6. 首页、聊天、Companion、设置与加载空间采用相同层级规则：每个局部区域至多一个主操作，主操作贴近输入、当前任务或确认对象；辅助操作编组；危险操作下沉或隔离。
+7. 保留背景资产、环境层、全局色域与既有空间构图。此次改造仅改变前景控件、局部操作编排和与控件有关的动效。
+8. 普通控件默认只使用短时 hover、focus 和 press 过渡。低频柔光呼吸仅保留给当前 primary 或明确运行状态；减少动效模式移除新的无限动画。
+9. 原型仅作为视觉决策的主证据，不直接提升到生产代码。正式控制模块和布局须以生产约束重新实现。
+10. Runtime、Bridge、Agent 状态机、授权策略、HTTP 与 WebSocket 合约不在本次改造范围内；所有既有点击事件必须维持原有业务含义。
+
+## Testing Decisions
+
+1. GlassControl 是最高层的可复用测试 seam。Vitest 测试外部可观察行为：可访问名称、键盘焦点可达性、禁用状态不触发动作、无图标控制没有空占位、危险意图具有文字和语义提示，以及带富内容 slot 的原生 submit 行为。block 全宽、焦点可见性与减少动效属于真实渲染行为，在浏览器与 Tauri 的视觉验收中验证。
+2. ControlGroup 测试必选 tab 或 radio 在任一时刻只保留一个选中项，并输出正确的 aria-selected 或 aria-checked；显式 allowEmpty 的可选 radio 可安全输出全未选状态并保留键盘进入点；RailNav 当前项输出 aria-current。
+3. Workbench 在用户可见 seam 上测试命令栏：每个状态区域至多一个 primary，确认或允许清晰可达，拒绝或取消不与 primary 混同，且既有 action 事件仍正确发出。
+4. 建立最小 Vue 测试基架，因为当前前端没有现成 UI 测试脚本。测试关注行为与语义，不锁定内部 class 或实现细节。
+5. 每个相关 slice 至少运行前端构建；最终手工视觉验收覆盖 1440×900、1280×720、980px 和 860px，以及悬停、按下、键盘焦点、禁用、危险态和减少动效。浏览器与 Tauri WebView2 都需要 spot-check。
+6. 背景层与环境层是回归不变量：控制系统不得删除、替换或覆盖它们。
+
+## Out of Scope
+
+- 替换背景图片、修改 RuntimeAmbientLayer、重定义深蓝/琥珀整体色调或重做全局空间构图。
+- 修改 Agent、Bridge、Runtime、权限、网络协议、状态模型或任务业务流程。
+- 引入新的客户端路由、把原型切换器发布到生产版本，或将原型代码直接作为正式组件复用。
+- 改变系统窗口最小化、最大化或关闭的业务行为；只允许必要的视觉一致性与危险态区分。
+- 新增不相关的页面、后端能力或远端发布流程。
+
+## Further Notes
+
+- 原型分支是视觉决策的 primary source；正式实现需要保留其结论而不是其临时代码。
+- 实施顺序优先建立共享深模块和测试 seam，再迁移高频入口与选择控件，随后实现 Workbench 命令栏，最后处理其余原生控制与跨场景验收。
+- 本规格依据用户此前授权采用推荐的 B 方案；如果后续视觉反馈改变结论，应更新本规格和 tickets，再开始对应 slice。

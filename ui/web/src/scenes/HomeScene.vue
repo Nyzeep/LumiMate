@@ -66,10 +66,12 @@ defineProps({
           label="陪伴空间"
           subtitle="Companion Space"
           :icon-path="ICON_PATHS.companion"
+          tier="quiet"
           semantic="companion"
+          truncate-copy
           @click="actions.navigate('companion')"
         />
-        <ActionButton label="工作台" subtitle="Workbench" :icon-path="ICON_PATHS.workbench" semantic="model" @click="actions.navigate('workbench')" />
+        <ActionButton label="工作台" subtitle="Workbench" :icon-path="ICON_PATHS.workbench" tier="quiet" semantic="model" truncate-copy @click="actions.navigate('workbench')" />
       </div>
     </div>
   </section>
