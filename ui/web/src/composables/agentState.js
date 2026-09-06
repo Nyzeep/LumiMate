@@ -171,13 +171,24 @@ export function applyAgentSnapshot(state, snapshot) {
   state.harnessAvailable = Boolean(snapshot.harnessAvailable);
   if (snapshot.currentTask && typeof snapshot.currentTask === "object") {
     const task = snapshot.currentTask;
+    const taskId = task.taskId || "";
+    // 快照只覆盖权威字段；事件归约持有的现场（permission/tools/fileChanges/
+    // testResults）不被 HTTP 轮询抹掉，否则审批弹窗会在轮询瞬间消失。
+    const live =
+      state.currentTask && state.currentTask.taskId === taskId
+        ? state.currentTask
+        : null;
     state.currentTask = {
-      ...emptyTask(task.taskId || ""),
+      ...emptyTask(taskId),
       title: task.title || "",
       state: task.state || "draft",
       plan: Array.isArray(task.plan) ? task.plan : [],
       result: task.result || null,
-      failure: task.failure || null
+      failure: task.failure || null,
+      tools: live ? live.tools : [],
+      fileChanges: live ? live.fileChanges : [],
+      testResults: live ? live.testResults : [],
+      permission: live ? live.permission : null
     };
   } else {
     state.currentTask = null;
