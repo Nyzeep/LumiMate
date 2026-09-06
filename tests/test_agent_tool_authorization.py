@@ -36,17 +36,21 @@ def test_wire_call_keeps_raw_facts_private_from_public_projection():
     assert "private" not in str(public_event)
 
 
+def _wire(tool_name, call_id, arguments, session_id="s1"):
+    return {
+        "sessionId": session_id,
+        "event": {
+            "type": "tool/call",
+            "data": {"name": tool_name, "callId": call_id, "arguments": arguments},
+        },
+    }
+
+
 def test_gate_uses_raw_command_for_whitelist_and_medium_category():
     gate = ToolAuthorizationGate(PermissionPolicy())
-    call = gate.from_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": "t1",
-            "sessionId": "s1",
-            "toolName": "bash",
-            "callId": "c1",
-            "arguments": json.dumps({"command": "python -m pytest tests -q"}),
-        }
+    call = gate.from_wire(
+        _wire("bash", "c1", json.dumps({"command": "python -m pytest tests -q"})),
+        task_id="t1",
     )
 
     decision = gate.decide(call, workspace=WORKSPACE)
@@ -57,15 +61,9 @@ def test_gate_uses_raw_command_for_whitelist_and_medium_category():
 
 def test_gate_keeps_workspace_escape_at_high_risk():
     gate = ToolAuthorizationGate(PermissionPolicy())
-    call = gate.from_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": "t1",
-            "sessionId": "s1",
-            "toolName": "write",
-            "callId": "c1",
-            "arguments": json.dumps({"file_path": "../outside.py"}),
-        }
+    call = gate.from_wire(
+        _wire("write", "c1", json.dumps({"file_path": "../outside.py"})),
+        task_id="t1",
     )
 
     decision = gate.decide(call, workspace=WORKSPACE)
@@ -73,17 +71,11 @@ def test_gate_keeps_workspace_escape_at_high_risk():
     assert decision.kind == "ask"
 
 
-def test_redacted_event_fails_closed():
+def test_unparseable_arguments_fail_closed():
     gate = ToolAuthorizationGate(PermissionPolicy())
-    call = gate.from_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": "t1",
-            "sessionId": "s1",
-            "toolName": "bash",
-            "callId": "c1",
-            "arguments": PUBLIC_ARGUMENTS_REDACTION,
-        }
+    call = gate.from_wire(
+        _wire("bash", "c1", "not-json{{{"),
+        task_id="t1",
     )
 
     decision = gate.decide(call, workspace=WORKSPACE)
@@ -92,15 +84,9 @@ def test_redacted_event_fails_closed():
 
 def test_missing_call_id_fails_closed():
     gate = ToolAuthorizationGate(PermissionPolicy())
-    call = gate.from_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": "t1",
-            "sessionId": "s1",
-            "toolName": "write",
-            "callId": "",
-            "arguments": json.dumps({"file_path": "a.py"}),
-        }
+    call = gate.from_wire(
+        _wire("write", "", json.dumps({"file_path": "a.py"})),
+        task_id="t1",
     )
 
     decision = gate.decide(call, workspace=WORKSPACE)
@@ -109,15 +95,9 @@ def test_missing_call_id_fails_closed():
 
 def test_session_mismatch_fails_closed():
     gate = ToolAuthorizationGate(PermissionPolicy())
-    call = gate.from_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": "t1",
-            "sessionId": "s1",
-            "toolName": "write",
-            "callId": "c1",
-            "arguments": json.dumps({"file_path": "a.py"}),
-        }
+    call = gate.from_wire(
+        _wire("write", "c1", json.dumps({"file_path": "a.py"})),
+        task_id="t1",
     )
 
     decision = gate.decide(

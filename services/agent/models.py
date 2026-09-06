@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from .state_machine import TaskState
+from .state_machine import TaskState, apply_transition
 
 
 @dataclass
@@ -33,6 +33,12 @@ class Task:
     result: dict[str, Any] | None = None
     failure: dict[str, Any] | None = None
     interrupted: bool = False
+
+    def transition_to(self, target: TaskState) -> TaskState:
+        """校验并推进 Task State（提案 §9 转换表）；非法转换抛 IllegalTransitionError。"""
+        apply_transition(self.state, target)
+        self.state = target
+        return self.state
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)

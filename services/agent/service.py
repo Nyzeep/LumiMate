@@ -23,7 +23,6 @@ from services.agent.state_machine import (
     TERMINAL_STATES,
     IllegalTransitionError,
     TaskState,
-    apply_transition,
 )
 from services.agent.store import TaskStore
 
@@ -120,8 +119,7 @@ class AgentService:
         )
         with self._lock:
             self._save_and_publish(task, "agent.task.created", title=title, state=task.state.value)
-            apply_transition(task.state, TaskState.PLANNING)
-            task.state = TaskState.PLANNING
+            task.transition_to(TaskState.PLANNING)
             self._save_and_publish(task, "agent.task.planning")
             self._sessions.start_projection(session_id, task.id, title)
             self._bridge.run_task(session_id, task.id, goal)
@@ -133,13 +131,11 @@ class AgentService:
             raise KeyError(f"未知 taskId：{task_id}")
         with self._lock:
             if approve:
-                apply_transition(task.state, TaskState.RUNNING)
-                task.state = TaskState.RUNNING
+                task.transition_to(TaskState.RUNNING)
                 self._save_and_publish(task, "agent.task.running")
                 self._bridge.run_task(task.session_id, task.id, task.goal)
             else:
-                apply_transition(task.state, TaskState.CANCELLED)
-                task.state = TaskState.CANCELLED
+                task.transition_to(TaskState.CANCELLED)
                 self._clear_task_authorization(task.id)
                 self._save_and_publish(task, "agent.task.cancelled")
             return task
@@ -156,8 +152,7 @@ class AgentService:
         with self._lock:
             current = self.get_task(task_id)
             if current.state in (TaskState.RUNNING, TaskState.AWAITING_PERMISSION):
-                apply_transition(current.state, TaskState.PAUSED)
-                current.state = TaskState.PAUSED
+                current.transition_to(TaskState.PAUSED)
                 self._save_and_publish(current, "agent.task.paused")
             return current
 
@@ -174,22 +169,19 @@ class AgentService:
                 TaskState.AWAITING_PERMISSION,
                 TaskState.PAUSED,
             ):
-                apply_transition(task.state, TaskState.CANCELLED)
-                task.state = TaskState.CANCELLED
+                task.transition_to(TaskState.CANCELLED)
                 self._clear_task_authorization(task.id)
                 self._save_and_publish(task, "agent.task.cancelled")
                 return task
             if task.state != TaskState.CANCELLING:
-                apply_transition(task.state, TaskState.CANCELLING)
-                task.state = TaskState.CANCELLING
+                task.transition_to(TaskState.CANCELLING)
                 self._store.save(task)
             self._intents[task.session_id] = "cancel"
         self._bridge.cancel(task.session_id)
         with self._lock:
             current = self.get_task(task_id)
             if current.state == TaskState.CANCELLING:
-                apply_transition(current.state, TaskState.CANCELLED)
-                current.state = TaskState.CANCELLED
+                current.transition_to(TaskState.CANCELLED)
                 self._clear_task_authorization(current.id)
                 self._save_and_publish(current, "agent.task.cancelled")
             return current
@@ -202,8 +194,7 @@ class AgentService:
         if task is None:
             raise KeyError(f"未知 taskId：{task_id}")
         with self._lock:
-            apply_transition(task.state, TaskState.RUNNING)
-            task.state = TaskState.RUNNING
+            task.transition_to(TaskState.RUNNING)
             self._save_and_publish(task, "agent.task.running")
             self._bridge.run_task(task.session_id, task.id, task.goal)
             return task
@@ -237,24 +228,16 @@ class AgentService:
                         workspace=task.workspace,
                         category=pending.decision.category,
                     )
-                apply_transition(task.state, TaskState.RUNNING)
-                task.state = TaskState.RUNNING
+                task.transition_to(TaskState.RUNNING)
                 self._save_and_publish(task, "agent.task.running")
                 self._pending_tools.pop(pending_key, None)
                 self._publish(self._authorization.project_started(pending.call))
             else:
-                apply_transition(task.state, TaskState.CANCELLED)
-                task.state = TaskState.CANCELLED
+                task.transition_to(TaskState.CANCELLED)
                 self._clear_task_authorization(task.id)
                 self._save_and_publish(task, "agent.task.cancelled")
             self._bridge.answer_approval(task.session_id, request_id, approve)
             return task
-
-    def _handle_tool_event(self, event: dict[str, Any]) -> None:
-        call = self._authorization.from_event(event)
-        if call is None:
-            return
-        self._handle_tool_call(call)
 
     def _on_bridge_tool_call(
         self,
@@ -301,8 +284,7 @@ class AgentService:
             self._publish(public_event)
             return
         with self._lock:
-            apply_transition(task.state, TaskState.AWAITING_PERMISSION)
-            task.state = TaskState.AWAITING_PERMISSION
+            task.transition_to(TaskState.AWAITING_PERMISSION)
             self._pending_tools[(task.id, call.call_id)] = PendingTool(call, decision)
             self._store.save(task)
             self._sync_projection(task)
@@ -315,11 +297,17 @@ class AgentService:
         """Bridge 事件回流入口（公开别名，供测试与外部接线使用）。"""
         self._on_bridge_event(event)
 
+    def on_bridge_tool_call(
+        self,
+        notification: dict[str, Any],
+        task_id: str,
+    ) -> bool:
+        """Bridge 工具调用回流入口（公开别名；与 bridge.tool_call_handler 同一接缝）。"""
+        return self._on_bridge_tool_call(notification, task_id)
+
     def _on_bridge_event(self, event: dict[str, Any]) -> None:
         event_type = event.get("type", "")
-        if event_type == "agent.task.tool_started":
-            self._handle_tool_event(event)
-        elif event_type in ("agent.task.completed", "agent.task.failed", "agent.task.cancelled"):
+        if event_type in ("agent.task.completed", "agent.task.failed", "agent.task.cancelled"):
             self._handle_state_event(event)
         else:
             self._publish(event)
@@ -337,19 +325,16 @@ class AgentService:
             if event_type == "agent.task.completed":
                 if task.state == TaskState.PLANNING:
                     plan = self._plan_from_result(task)
-                    apply_transition(task.state, TaskState.AWAITING_PLAN_APPROVAL)
-                    task.state = TaskState.AWAITING_PLAN_APPROVAL
+                    task.transition_to(TaskState.AWAITING_PLAN_APPROVAL)
                     task.plan = plan
                     self._save_and_publish(task, "agent.task.awaiting_plan_approval", plan=plan)
                 elif task.state == TaskState.RUNNING:
-                    apply_transition(task.state, TaskState.COMPLETED)
-                    task.state = TaskState.COMPLETED
+                    task.transition_to(TaskState.COMPLETED)
                     self._clear_task_authorization(task.id)
                     self._save_and_publish(task, "agent.task.completed")
             elif event_type == "agent.task.failed":
                 if task.state in (TaskState.PLANNING, TaskState.RUNNING, TaskState.CANCELLING):
-                    apply_transition(task.state, TaskState.FAILED)
-                    task.state = TaskState.FAILED
+                    task.transition_to(TaskState.FAILED)
                     self._clear_task_authorization(task.id)
                     self._save_and_publish(task, "agent.task.failed", failure=event.get("failure"))
             elif event_type == "agent.task.cancelled":
@@ -360,12 +345,10 @@ class AgentService:
                     TaskState.PAUSED,
                 ):
                     if task.state != TaskState.PAUSED:
-                        apply_transition(task.state, TaskState.PAUSED)
-                        task.state = TaskState.PAUSED
+                        task.transition_to(TaskState.PAUSED)
                         self._save_and_publish(task, "agent.task.paused")
                 elif task.state not in TERMINAL_STATES:
-                    apply_transition(task.state, TaskState.CANCELLED)
-                    task.state = TaskState.CANCELLED
+                    task.transition_to(TaskState.CANCELLED)
                     self._clear_task_authorization(task.id)
                     self._save_and_publish(task, "agent.task.cancelled")
                 elif task.state == TaskState.CANCELLED:
@@ -374,8 +357,7 @@ class AgentService:
     # ---- 内部 ----
 
     def _plan_from_result(self, task: Task) -> list[dict[str, Any]] | None:
-        result = self._bridge.last_result(task.session_id)
-        text = getattr(result, "final_response", "") if result is not None else ""
+        text = self._bridge.final_response(task.session_id)
         return [{"summary": text}] if text else []
 
     def propose_memory(

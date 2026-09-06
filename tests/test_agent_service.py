@@ -25,8 +25,9 @@ class FakeBridge:
         self.cancelled.append(session_id)
         return "cancelled"
 
-    def last_result(self, session_id: str):
-        return self.last_results.get(session_id)
+    def final_response(self, session_id: str) -> str:
+        result = self.last_results.get(session_id)
+        return getattr(result, "final_response", "") if result is not None else ""
 
     def answer_approval(self, session_id: str, request_id: str, approve: bool) -> None:
         self.approval_answers.append((session_id, request_id, approve))
@@ -221,14 +222,14 @@ def test_resume_session_reuses_provided_session_id(tmp_path):
 
 
 
-def tool_started(task, tool_name="write", call_id="call-1", arguments='{"file_path": "D:\\\\LumiMate\\\\a.py"}'):
+def tool_call(task, tool_name="write", call_id="call-1", arguments='{"file_path": "D:\\\\LumiMate\\\\a.py"}'):
+    """按 Bridge 线协议构造 tool/call 通知：工具调用只经 from_wire 摄取。"""
     return {
-        "type": "agent.task.tool_started",
-        "taskId": task.id,
         "sessionId": task.session_id,
-        "toolName": tool_name,
-        "callId": call_id,
-        "arguments": arguments,
+        "event": {
+            "type": "tool/call",
+            "data": {"name": tool_name, "callId": call_id, "arguments": arguments},
+        },
     }
 
 
@@ -238,7 +239,7 @@ def test_tool_without_grant_moves_to_awaiting_permission(tmp_path):
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
 
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
 
     assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
     awaiting = next(
@@ -254,7 +255,7 @@ def test_approve_permission_grants_medium_and_resumes(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
 
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
@@ -271,13 +272,13 @@ def test_second_same_category_tool_after_grant_allows(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task, call_id="call-1"))
+    service.on_bridge_tool_call(tool_call(task, call_id="call-1"), task_id=task.id)
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
 
     published.clear()
-    service.on_bridge_event(tool_started(task, call_id="call-2"))
+    service.on_bridge_tool_call(tool_call(task, call_id="call-2"), task_id=task.id)
 
     assert service.get_task(task.id).state == TaskState.RUNNING
     assert any(e["type"] == "agent.task.tool_started" for e in published)
@@ -288,7 +289,7 @@ def test_approve_permission_reject_cancels_task(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
 
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=False
@@ -303,7 +304,7 @@ def test_cancel_task_revokes_existing_grants(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
@@ -323,7 +324,7 @@ def test_pause_keeps_grants_for_the_same_task(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
@@ -351,16 +352,17 @@ def test_tool_call_while_waiting_permission_is_rejected(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task, call_id="call-1"))
+    service.on_bridge_tool_call(tool_call(task, call_id="call-1"), task_id=task.id)
     published.clear()
 
-    service.on_bridge_event(
-        tool_started(
+    service.on_bridge_tool_call(
+        tool_call(
             task,
             tool_name="read",
             call_id="call-2",
             arguments='{"file_path": "../outside.py"}',
-        )
+        ),
+        task_id=task.id,
     )
 
     assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
@@ -374,15 +376,19 @@ def test_tool_session_mismatch_is_rejected(tmp_path):
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
 
-    service.on_bridge_event(
+    service.on_bridge_tool_call(
         {
-            "type": "agent.task.tool_started",
-            "taskId": task.id,
             "sessionId": "other-session",
-            "toolName": "write",
-            "callId": "call-1",
-            "arguments": '{"file_path": "a.py"}',
-        }
+            "event": {
+                "type": "tool/call",
+                "data": {
+                    "name": "write",
+                    "callId": "call-1",
+                    "arguments": '{"file_path": "a.py"}',
+                },
+            },
+        },
+        task_id=task.id,
     )
 
     assert service.get_task(task.id).state == TaskState.RUNNING
@@ -394,25 +400,27 @@ def test_high_tool_always_asks_even_after_approval(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(
-        tool_started(
+    service.on_bridge_tool_call(
+        tool_call(
             task,
             tool_name="write",
             call_id="call-1",
             arguments='{"file_path": "../outside.py"}',
-        )
+        ),
+        task_id=task.id,
     )
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
 
-    service.on_bridge_event(
-        tool_started(
+    service.on_bridge_tool_call(
+        tool_call(
             task,
             tool_name="write",
             call_id="call-2",
             arguments='{"file_path": "../outside.py"}',
-        )
+        ),
+        task_id=task.id,
     )
 
     assert service.get_task(task.id).state == TaskState.AWAITING_PERMISSION
@@ -423,7 +431,7 @@ def test_permission_category_must_match_the_pending_tool(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task))
+    service.on_bridge_tool_call(tool_call(task), task_id=task.id)
 
     with pytest.raises(ValueError, match="权限类别"):
         service.approve_permission(
@@ -440,7 +448,7 @@ def test_terminal_state_revokes_grants(tmp_path):
     task = service.start_task(title="t", goal="g", workspace=WORKSPACE)
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
-    service.on_bridge_event(tool_started(task, call_id="call-1"))
+    service.on_bridge_tool_call(tool_call(task, call_id="call-1"), task_id=task.id)
     service.approve_permission(
         task.id, request_id="call-1", grant_category="file_modify", approve=True
     )
@@ -468,15 +476,9 @@ def test_non_whitelisted_tool_is_denied_without_ask(tmp_path):
     complete_plan(service, bridge, task)
     service.approve_plan(task.id, approve=True)
 
-    service.on_bridge_event(
-        {
-            "type": "agent.task.tool_started",
-            "taskId": task.id,
-            "sessionId": task.session_id,
-            "toolName": "network",
-            "callId": "call-1",
-            "arguments": "{}",
-        }
+    service.on_bridge_tool_call(
+        tool_call(task, tool_name="network", call_id="call-1", arguments="{}"),
+        task_id=task.id,
     )
 
     assert service.get_task(task.id).state == TaskState.RUNNING

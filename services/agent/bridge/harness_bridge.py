@@ -250,6 +250,13 @@ class HarnessBridge:
         with self._lock:
             return self._results.get(session_id)
 
+    def final_response(self, session_id: str) -> str:
+        """Turn 的最终回应文本；SDK RunResult 形状只在 Bridge 实现内部解读。"""
+        result = self.last_result(session_id)
+        if result is None:
+            return ""
+        return str(getattr(result, "final_response", "") or "")
+
     def cancel(self, session_id: str) -> str:
         """协作式取消：等待当前步骤自然结束，超时后终止 Harness 进程。"""
         self.request_cancel(session_id)

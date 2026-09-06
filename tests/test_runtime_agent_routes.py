@@ -155,15 +155,19 @@ def test_permission_approval_flow_via_http(tmp_path):
         )
         assert approve_plan.json()["task"]["state"] == "running"
 
-    service.on_bridge_event(
+    service.on_bridge_tool_call(
         {
-            "type": "agent.task.tool_started",
-            "taskId": task_id,
             "sessionId": session_id,
-            "toolName": "write",
-            "callId": "call-1",
-            "arguments": '{"file_path": "D:\\\\LumiMate\\\\a.py"}',
-        }
+            "event": {
+                "type": "tool/call",
+                "data": {
+                    "name": "write",
+                    "callId": "call-1",
+                    "arguments": '{"file_path": "D:\\\\LumiMate\\\\a.py"}',
+                },
+            },
+        },
+        task_id=task_id,
     )
     assert service.get_task(task_id).state.value == "awaiting_permission"
 

@@ -73,28 +73,6 @@ class ToolAuthorizationGate:
             raw_arguments=data.get("arguments"),
         )
 
-    def from_event(self, event: Mapping[str, Any]) -> ToolCall | None:
-        if not isinstance(event, Mapping):
-            return None
-        if event.get("type") != "agent.task.tool_started":
-            return None
-        raw_arguments = event.get("arguments")
-        if raw_arguments == PUBLIC_ARGUMENTS_REDACTION:
-            arguments: dict[str, Any] = {}
-            has_arguments = True
-            arguments_valid = False
-        else:
-            arguments, has_arguments, arguments_valid = _parse_arguments(raw_arguments)
-        return ToolCall(
-            task_id=str(event.get("taskId") or ""),
-            session_id=str(event.get("sessionId") or ""),
-            tool_name=str(event.get("toolName") or "").strip().lower(),
-            call_id=str(event.get("callId") or ""),
-            arguments=arguments,
-            has_arguments=has_arguments,
-            arguments_valid=arguments_valid,
-        )
-
     def decide(
         self,
         call: ToolCall,
