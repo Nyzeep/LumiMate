@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
 import { reactive, ref } from "vue";
 import ChatScene from "./ChatScene.vue";
-import { RUNTIME_CONTEXT } from "../composables/useRuntimeContext";
+import { mountWithRuntimeContext } from "../test-utils/runtimeContext";
 
 describe("ChatScene", () => {
   it("keeps sending form-driven with a named message input", async () => {
@@ -16,10 +15,11 @@ describe("ChatScene", () => {
       voicePercent: ref(20), breathPercent: ref(50), presenceCopy: ref("在线"), chatStageLabel: ref("安静"),
       presencePercent: ref(40), moodLabel: ref("平静"), progressRatio: ref(0.4), stateLabel: ref("就绪")
     };
-    const wrapper = mount(ChatScene, {
-      props: { active: true, scene: { title: "对话", titleEn: "Chat" } },
-      global: { provide: { [RUNTIME_CONTEXT]: { state, derived, actions } } }
-    });
+    const wrapper = mountWithRuntimeContext(
+      ChatScene,
+      { state, derived, actions },
+      { active: true, scene: { title: "对话", titleEn: "Chat" } }
+    );
 
     expect(wrapper.get('input[aria-label="消息输入"]').element.value).toBe("你好");
     expect(wrapper.get('button[aria-label="发送消息"]').attributes("type")).toBe("submit");

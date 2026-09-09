@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
 import { reactive, ref } from "vue";
 import WorkbenchScene from "./WorkbenchScene.vue";
 import { applyAgentSnapshot, createAgentState } from "../composables/agentState";
-import { RUNTIME_CONTEXT } from "../composables/useRuntimeContext";
+import { mountWithRuntimeContext } from "../test-utils/runtimeContext";
 
 function createContext() {
   const currentTask = {
@@ -49,9 +48,9 @@ function createContext() {
 }
 
 function mountScene(context) {
-  return mount(WorkbenchScene, {
-    props: { scene: context.scene, active: context.active },
-    global: { provide: { [RUNTIME_CONTEXT]: context } }
+  return mountWithRuntimeContext(WorkbenchScene, context, {
+    scene: context.scene,
+    active: context.active
   });
 }
 
