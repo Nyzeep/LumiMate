@@ -1,14 +1,13 @@
 <script setup>
 import HoloCard from "../components/HoloCard.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 
-const props = defineProps({
+const { scene, active } = defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+const { state } = useRuntimeContext();
 
 function basename(value) {
   const normalized = String(value || "").replace(/\\/g, "/");
@@ -16,15 +15,15 @@ function basename(value) {
 }
 
 function workspaceLabel() {
-  return basename(props.state.app.projectRoot) || "LumiMate";
+  return basename(state.app.projectRoot) || "LumiMate";
 }
 
 function pythonLabel() {
-  return basename(props.state.app.pythonExecutable) || "python";
+  return basename(state.app.pythonExecutable) || "python";
 }
 
 function authorName() {
-  return props.state.app.appAuthor || "Nyzeep";
+  return state.app.appAuthor || "Nyzeep";
 }
 </script>
 

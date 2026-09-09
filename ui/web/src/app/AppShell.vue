@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, watch } from "vue";
+import { nextTick, onMounted, watch } from "vue";
 import AmbientModeSwitch from "../components/AmbientModeSwitch.vue";
 import BootVeil from "../components/BootVeil.vue";
 import DiagnosticsHud from "../components/DiagnosticsHud.vue";
@@ -11,15 +11,9 @@ import TechText from "../components/TechText.vue";
 import { useBridgeState } from "../composables/useBridgeState";
 import { useMotionPreferences } from "../composables/useMotionPreferences";
 import { useRuntimeUiEngine } from "../composables/useRuntimeUiEngine";
+import { provideRuntimeContext } from "../composables/useRuntimeContext";
 import { useSceneNavigation } from "../composables/useSceneNavigation";
 import { ICON_PATHS, SCENES } from "./sceneRegistry";
-
-const FALLBACK_LOADING_STEPS = [
-  { label: "\u8bfb\u53d6\u542c\u89c9\u8282\u70b9", threshold: 1, state: "loading_asr" },
-  { label: "\u6821\u51c6\u601d\u7ef4\u6838\u5fc3", threshold: 2, state: "loading_llm" },
-  { label: "\u70b9\u4eae\u58f0\u7ebf\u7f51\u7edc", threshold: 3, state: "loading_tts" },
-  { label: "\u5bf9\u9f50\u8bb0\u5fc6\u6837\u672c", threshold: 4, state: "loading_tts" }
-];
 
 const { bridges, state, derived, initBridges, bridgeActions } = useBridgeState();
 const {
@@ -47,50 +41,12 @@ const { shellClasses, ambientStyle, diagnostics, idle, timeLabel, timeSemantic, 
   });
 
 const drawerData = derived.drawerData;
+const { bootPhaseCopy } = derived;
 let bootFallbackTimer = 0;
-
-const view = computed(() => ({
-  stateLabel: derived.stateLabel.value,
-  chatStageLabel: derived.chatStageLabel.value,
-  moodLabel: derived.moodLabel.value,
-  ambientModeLabel: derived.ambientModeLabel.value,
-  progressRatio: derived.progressRatio.value,
-  progressPercent: derived.progressPercent.value,
-  voicePercent: derived.voicePercent.value,
-  presencePercent: derived.presencePercent.value,
-  breathPercent: derived.breathPercent.value,
-  storagePercent: derived.storagePercent.value,
-  conversationReady: derived.conversationReady.value,
-  entryLabel: derived.entryLabel.value,
-  entryCaption: derived.entryCaption.value,
-  presenceCopy: derived.presenceCopy.value,
-  bootPhaseCopy: derived.bootPhaseCopy.value,
-  shortLogs: derived.shortLogs.value,
-  currentModelName: derived.currentModelName.value,
-  currentAsrName: derived.currentAsrName.value,
-  currentTtsName: derived.currentTtsName.value,
-  currentReferenceName: derived.currentReferenceName.value,
-  runtimePulse: derived.runtimePulse.value,
-  loadingSteps: state.runtime.loadingSteps.length
-    ? state.runtime.loadingSteps
-    : FALLBACK_LOADING_STEPS.map((step) => ({
-        label: step.label,
-        done: state.runtime.loaded || state.runtime.progressStep >= step.threshold,
-        active: state.runtime.state === step.state
-      })),
-  modelCatalog: state.runtime.modelCatalog,
-  runtimeMessage: state.runtime.message,
-  agent: state.agent,
-  storageItems: state.runtime.storageItems,
-  storageUsedLabel: state.runtime.storageUsedLabel,
-  storageTotalLabel: state.runtime.storageTotalLabel,
-  storageFreeLabel: state.runtime.storageFreeLabel,
-  isFullscreen: state.window.isFullscreen
-}));
 
 async function beginConversation() {
   noteActivity();
-  if (!view.value.conversationReady) {
+  if (!derived.conversationReady.value) {
     const started = await bridgeActions.loadModels();
     if (started) {
       await navigate("loading", true);
@@ -181,6 +137,8 @@ const actions = {
   closeWindow: bridgeActions.closeWindow
 };
 
+provideRuntimeContext({ state, derived, actions });
+
 function clearBootFallback() {
   if (bootFallbackTimer) {
     window.clearTimeout(bootFallbackTimer);
@@ -237,7 +195,7 @@ onMounted(async () => {
 
 <template>
   <main class="app-shell" :class="shellClasses">
-    <BootVeil :ready="state.boot.ready" :phase-label="view.bootPhaseCopy" />
+    <BootVeil :ready="state.boot.ready" :phase-label="bootPhaseCopy" />
 
     <div class="background-stage" aria-hidden="true">
       <div
@@ -327,9 +285,6 @@ onMounted(async () => {
           :key="scene.id"
           :scene="scene"
           :active="sceneIs(scene.id)"
-          :state="state"
-          :view="view"
-          :actions="actions"
         />
       </section>
     </div>

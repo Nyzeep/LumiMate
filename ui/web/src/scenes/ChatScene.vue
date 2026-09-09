@@ -6,27 +6,36 @@ import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import TechText from "../components/TechText.vue";
 import { ICON_PATHS } from "../app/sceneRegistry";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 
-const props = defineProps({
+const { scene, active } = defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+const { state, derived, actions } = useRuntimeContext();
+const {
+  presenceCopy,
+  presencePercent,
+  chatStageLabel,
+  voicePercent,
+  breathPercent,
+  stateLabel,
+  progressRatio,
+  moodLabel
+} = derived;
 
 const composerFocused = ref(false);
 
 const sceneClasses = computed(() => ({
-  "is-active": props.active,
-  "is-listening": props.state.chat.running,
-  "is-thinking": props.state.chat.phase === "thinking",
-  "is-replying": props.state.chat.phase === "replying",
+  "is-active": active,
+  "is-listening": state.chat.running,
+  "is-thinking": state.chat.phase === "thinking",
+  "is-replying": state.chat.phase === "replying",
   "is-focused": composerFocused.value
 }));
 
 const voiceBars = computed(() =>
-  Array.from({ length: 7 }, (_, index) => 0.34 + (((props.view.voicePercent + index * 13) % 36) / 36) * 0.88)
+  Array.from({ length: 7 }, (_, index) => 0.34 + (((voicePercent.value + index * 13) % 36) / 36) * 0.88)
 );
 </script>
 
@@ -39,10 +48,10 @@ const voiceBars = computed(() =>
 
         <HoloCard class="info-card" tone="strong">
           <p class="scene-kicker">Lumi 状态</p>
-          <p class="presence-copy"><strong>Lumi</strong><small>{{ view.presenceCopy }}</small></p>
-          <MetricLine label="对话阶段" :value="view.chatStageLabel" :progress="state.emotion.presenceLevel" />
-          <MetricLine label="听觉活性" :value="`${view.voicePercent}%`" :progress="state.chat.voiceLevel" />
-          <MetricLine label="呼吸节律" :value="`${view.breathPercent}%`" :progress="state.emotion.breathLevel" />
+          <p class="presence-copy"><strong>Lumi</strong><small>{{ presenceCopy }}</small></p>
+          <MetricLine label="对话阶段" :value="chatStageLabel" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="听觉活性" :value="`${voicePercent}%`" :progress="state.chat.voiceLevel" />
+          <MetricLine label="呼吸节律" :value="`${breathPercent}%`" :progress="state.emotion.breathLevel" />
           <p class="panel-note">{{ state.chat.status }}</p>
         </HoloCard>
 
@@ -128,10 +137,10 @@ const voiceBars = computed(() =>
       <div class="span-3 scene-side-stack">
         <HoloCard class="chat-status-stack">
           <p class="scene-kicker">空间反馈</p>
-          <MetricLine label="存在亮度" :value="`${view.presencePercent}%`" :progress="state.emotion.presenceLevel" />
-          <MetricLine label="呼吸频率" :value="`${view.breathPercent}%`" :progress="state.emotion.breathLevel" />
-          <MetricLine label="回应意愿" :value="view.stateLabel" :progress="view.progressRatio" />
-          <MetricLine label="当前情绪" :value="view.moodLabel" :progress="state.emotion.breathLevel" />
+          <MetricLine label="存在亮度" :value="`${presencePercent}%`" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="呼吸频率" :value="`${breathPercent}%`" :progress="state.emotion.breathLevel" />
+          <MetricLine label="回应意愿" :value="stateLabel" :progress="progressRatio" />
+          <MetricLine label="当前情绪" :value="moodLabel" :progress="state.emotion.breathLevel" />
         </HoloCard>
 
         <HoloCard class="info-card">

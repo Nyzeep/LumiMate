@@ -3,15 +3,16 @@ import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import OrbitalIconButton from "../components/OrbitalIconButton.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 import { ICON_PATHS } from "../app/sceneRegistry";
 
 defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+
+const { state, derived, actions } = useRuntimeContext();
+const { presencePercent, moodLabel } = derived;
 </script>
 
 <template>
@@ -43,7 +44,7 @@ defineProps({
           <p class="scene-kicker">舞台能力</p>
           <p class="panel-note">{{ state.companion.rendererType }}</p>
           <p class="panel-note">{{ state.companion.rendererCapability }}</p>
-          <MetricLine label="存在亮度" :value="`${view.presencePercent}%`" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="存在亮度" :value="`${presencePercent}%`" :progress="state.emotion.presenceLevel" />
           <MetricLine label="语音脉冲" :value="`${Math.round(state.companion.speechLevel * 100)}%`" :progress="state.companion.speechLevel" />
         </HoloCard>
       </div>
@@ -57,7 +58,7 @@ defineProps({
             <OrbitalIconButton label="对话记录" :icon-path="ICON_PATHS.chat" semantic="chat" @click="actions.navigate('chat')" />
             <OrbitalIconButton label="存储概览" :icon-path="ICON_PATHS.storage" semantic="system" @click="actions.navigate('storage')" />
           </div>
-          <MetricLine label="情绪安稳度" :value="view.moodLabel" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="情绪安稳度" :value="moodLabel" :progress="state.emotion.presenceLevel" />
         </HoloCard>
       </div>
     </div>

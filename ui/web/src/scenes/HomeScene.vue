@@ -4,15 +4,28 @@ import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 import { ICON_PATHS } from "../app/sceneRegistry";
 
 defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+
+const { state, derived, actions } = useRuntimeContext();
+const {
+  presenceCopy,
+  presencePercent,
+  breathPercent,
+  ambientModeLabel,
+  progressRatio,
+  conversationReady,
+  stateLabel,
+  entryLabel,
+  entryCaption,
+  chatStageLabel,
+  voicePercent
+} = derived;
 </script>
 
 <template>
@@ -22,23 +35,23 @@ defineProps({
       <div class="span-4 scene-copy">
         <TechText as="p" tone="muted">{{ scene.title }} / <span class="mono-inline">{{ scene.titleEn }}</span></TechText>
         <h1 class="scene-heading">晚上好</h1>
-        <p class="scene-summary">{{ view.presenceCopy }}</p>
+        <p class="scene-summary">{{ presenceCopy }}</p>
 
         <HoloCard class="info-card" tone="strong">
           <p class="scene-kicker">空间亮度</p>
-          <MetricLine label="存在密度" :value="`${view.presencePercent}%`" :progress="state.emotion.presenceLevel" />
-          <MetricLine label="呼吸节律" :value="`${view.breathPercent}%`" :progress="state.emotion.breathLevel" />
-          <MetricLine label="环境模式" :value="view.ambientModeLabel" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="存在密度" :value="`${presencePercent}%`" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="呼吸节律" :value="`${breathPercent}%`" :progress="state.emotion.breathLevel" />
+          <MetricLine label="环境模式" :value="ambientModeLabel" :progress="state.emotion.presenceLevel" />
           <p class="panel-note">由当前运行状态驱动的空间亮度与回应意愿。</p>
         </HoloCard>
       </div>
 
       <div class="span-5 hero-shell">
-        <OrbitLoading :progress="view.progressRatio" :loaded="view.conversationReady" :caption="view.stateLabel" label="Lumi 中央核心" />
+        <OrbitLoading :progress="progressRatio" :loaded="conversationReady" :caption="stateLabel" label="Lumi 中央核心" />
         <ActionButton
           class="hero-cta"
-          :label="view.entryLabel"
-          :subtitle="view.entryCaption"
+          :label="entryLabel"
+          :subtitle="entryCaption"
           :icon-path="ICON_PATHS.home"
           tier="primary"
           semantic="core"
@@ -50,9 +63,9 @@ defineProps({
       <div class="span-3 scene-side-stack">
         <HoloCard class="info-card">
           <p class="scene-kicker">当前状态</p>
-          <MetricLine label="核心状态" :value="view.stateLabel" :progress="view.progressRatio" />
-          <MetricLine label="回应意愿" :value="view.chatStageLabel" :progress="state.emotion.presenceLevel" />
-          <MetricLine label="声线活性" :value="`${view.voicePercent}%`" :progress="state.chat.voiceLevel" />
+          <MetricLine label="核心状态" :value="stateLabel" :progress="progressRatio" />
+          <MetricLine label="回应意愿" :value="chatStageLabel" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="声线活性" :value="`${voicePercent}%`" :progress="state.chat.voiceLevel" />
         </HoloCard>
 
         <HoloCard class="info-card">

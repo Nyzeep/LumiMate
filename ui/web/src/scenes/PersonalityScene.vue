@@ -4,6 +4,7 @@ import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 
 const moods = [
   { id: "quiet", label: "静谧" },
@@ -13,11 +14,11 @@ const moods = [
 
 defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+
+const { state, derived, actions } = useRuntimeContext();
+const { presencePercent, breathPercent, moodLabel, stateLabel } = derived;
 </script>
 
 <template>
@@ -38,8 +39,8 @@ defineProps({
           @select="actions.setMood"
         />
         <HoloCard class="info-card">
-          <MetricLine label="情绪共鸣强度" :value="`${view.presencePercent}%`" :progress="state.emotion.presenceLevel" />
-          <MetricLine label="呼吸节律" :value="`${view.breathPercent}%`" :progress="state.emotion.breathLevel" />
+          <MetricLine label="情绪共鸣强度" :value="`${presencePercent}%`" :progress="state.emotion.presenceLevel" />
+          <MetricLine label="呼吸节律" :value="`${breathPercent}%`" :progress="state.emotion.breathLevel" />
         </HoloCard>
       </div>
 
@@ -50,8 +51,8 @@ defineProps({
       <div class="span-3">
         <HoloCard class="info-card" tone="strong">
           <p class="scene-kicker">当前人格</p>
-          <p class="panel-note">情绪：{{ view.moodLabel }}</p>
-          <p class="panel-note">存在：{{ view.stateLabel }}</p>
+          <p class="panel-note">情绪：{{ moodLabel }}</p>
+          <p class="panel-note">存在：{{ stateLabel }}</p>
           <p class="panel-note">倾听：{{ state.emotion.isListening ? "正在进行" : "尚未开始" }}</p>
         </HoloCard>
       </div>

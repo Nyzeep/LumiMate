@@ -3,15 +3,21 @@ import GlassControl from "../components/GlassControl.vue";
 import HoloCard from "../components/HoloCard.vue";
 import MetricLine from "../components/MetricLine.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 import TechText from "../components/TechText.vue";
 
 defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+
+const { state, derived, actions } = useRuntimeContext();
+const {
+  storagePercent,
+  storageUsedLabel,
+  storageTotalLabel,
+  storageFreeLabel
+} = derived;
 </script>
 
 <template>
@@ -25,20 +31,20 @@ defineProps({
       </div>
 
       <div class="span-3">
-        <OrbitLoading :progress="view.storagePercent / 100" :loaded="view.storagePercent > 0" caption="Storage" label="存储轨道" variant="storage" />
+        <OrbitLoading :progress="storagePercent / 100" :loaded="storagePercent > 0" caption="Storage" label="存储轨道" variant="storage" />
       </div>
 
       <div class="span-5">
         <HoloCard class="info-card" tone="strong">
-          <h2 class="metric-display">{{ view.storageUsedLabel }} <small>/ {{ view.storageTotalLabel }}</small></h2>
-          <MetricLine label="已追踪容量" :value="`${view.storagePercent}%`" :progress="view.storagePercent / 100" />
-          <MetricLine label="剩余空间" :value="view.storageFreeLabel" :progress="Math.max(0, 1 - view.storagePercent / 100)" />
+          <h2 class="metric-display">{{ storageUsedLabel }} <small>/ {{ storageTotalLabel }}</small></h2>
+          <MetricLine label="已追踪容量" :value="`${storagePercent}%`" :progress="storagePercent / 100" />
+          <MetricLine label="剩余空间" :value="storageFreeLabel" :progress="Math.max(0, 1 - storagePercent / 100)" />
         </HoloCard>
       </div>
 
       <div class="span-12">
         <HoloCard class="bucket-card">
-          <div v-for="item in view.storageItems" :key="item.titleKey || item.path" class="bucket-row">
+          <div v-for="item in state.runtime.storageItems" :key="item.titleKey || item.path" class="bucket-row">
             <span>{{ item.label }}</span>
             <strong>{{ item.valueLabel }}</strong>
           </div>

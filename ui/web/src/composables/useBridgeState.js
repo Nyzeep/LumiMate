@@ -69,6 +69,13 @@ const AMBIENT_MODE_LABELS = {
   stream: "星流"
 };
 
+const FALLBACK_LOADING_STEPS = [
+  { label: "读取听觉节点", threshold: 1, state: "loading_asr" },
+  { label: "校准思维核心", threshold: 2, state: "loading_llm" },
+  { label: "点亮声线网络", threshold: 3, state: "loading_tts" },
+  { label: "对齐记忆样本", threshold: 4, state: "loading_tts" }
+];
+
 function normalizeList(value) {
   return Array.isArray(value) ? [...value] : [];
 }
@@ -408,19 +415,6 @@ export function useBridgeState() {
     }
   }
 
-  function syncAll() {
-    return getRuntimeState().then(async (snapshot) => {
-      applySnapshot(snapshot);
-      try {
-        const agentStatus = await runtimeRequest("/api/agent/status", {});
-        applyAgentSnapshot(state.agent, agentStatus);
-      } catch (error) {
-        console.warn("Unable to refresh agent status.", error);
-      }
-      return snapshot;
-    });
-  }
-
   const derived = {
     stateLabel: computed(() => STATUS_LABELS[state.runtime.state] || state.runtime.state || "静置"),
     chatStageLabel: computed(() => STATUS_LABELS[state.chat.phase] || state.chat.phase || "静置"),
@@ -453,6 +447,15 @@ export function useBridgeState() {
       return "Lumi 正在静静地迎候你。";
     }),
     bootPhaseCopy: computed(() => BOOT_PHASE_COPY[state.boot.phase] || "Preparing"),
+    loadingSteps: computed(() =>
+      state.runtime.loadingSteps.length
+        ? state.runtime.loadingSteps
+        : FALLBACK_LOADING_STEPS.map((step) => ({
+            label: step.label,
+            done: state.runtime.loaded || state.runtime.progressStep >= step.threshold,
+            active: state.runtime.state === step.state
+          }))
+    ),
     shortLogs: computed(() => state.runtime.logs.slice(-4)),
     currentModelName: computed(() => pickSelected(state.runtime.modelCatalog.llm)?.title || "Qwen 2.5"),
     currentAsrName: computed(() => pickSelected(state.runtime.modelCatalog.asr)?.title || "Listening Node"),
@@ -602,7 +605,6 @@ export function useBridgeState() {
     state,
     derived,
     initBridges,
-    syncAll,
     bridgeActions
   };
 }

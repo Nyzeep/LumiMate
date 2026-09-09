@@ -2,15 +2,15 @@
 import HoloCard from "../components/HoloCard.vue";
 import OrbitalIconButton from "../components/OrbitalIconButton.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 import { ICON_PATHS } from "../app/sceneRegistry";
 
 defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+
+const { state, actions } = useRuntimeContext();
 </script>
 
 <template>

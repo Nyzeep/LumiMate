@@ -7,15 +7,22 @@ import HoloCard from "../components/HoloCard.vue";
 import OrbitLoading from "../components/OrbitLoading.vue";
 import TaskCommandRail from "../components/TaskCommandRail.vue";
 import TechText from "../components/TechText.vue";
+import { useRuntimeContext } from "../composables/useRuntimeContext";
 import { ICON_PATHS } from "../app/sceneRegistry";
 
-const props = defineProps({
+const { scene, active } = defineProps({
   scene: { type: Object, required: true },
-  active: { type: Boolean, default: false },
-  state: { type: Object, required: true },
-  view: { type: Object, required: true },
-  actions: { type: Object, required: true }
+  active: { type: Boolean, default: false }
 });
+const { state, derived, actions } = useRuntimeContext();
+const {
+  progressRatio,
+  stateLabel,
+  currentModelName,
+  currentAsrName,
+  currentTtsName,
+  shortLogs
+} = derived;
 
 const subspaces = [
   { id: "core", label: "核心舱", subtitle: "Core Chamber" },
@@ -39,18 +46,18 @@ const local = reactive({
 });
 
 const awakening = computed(() =>
-  ["loading_asr", "loading_llm", "loading_tts", "switching", "validating"].includes(props.state.runtime.state)
+  ["loading_asr", "loading_llm", "loading_tts", "switching", "validating"].includes(state.runtime.state)
 );
 
-const componentStatus = computed(() => props.state.runtime.componentStatus);
+const componentStatus = computed(() => state.runtime.componentStatus);
 const missingRequired = computed(() => componentStatus.value.missingRequired || []);
-const shouldOpenGalaxy = computed(() => props.active && missingRequired.value.length > 0);
-const downloadBusy = computed(() => ["scanning", "downloading", "organizing"].includes(props.state.runtime.downloadState));
-const downloadProgressRatio = computed(() => Math.max(0, Math.min(1, Number(props.state.runtime.downloadProgress || 0) / 100)));
+const shouldOpenGalaxy = computed(() => active && missingRequired.value.length > 0);
+const downloadBusy = computed(() => ["scanning", "downloading", "organizing"].includes(state.runtime.downloadState));
+const downloadProgressRatio = computed(() => Math.max(0, Math.min(1, Number(state.runtime.downloadProgress || 0) / 100)));
 const modelGroups = computed(() => [
-  { kind: "llm", label: "思维核心", currentName: props.view.currentModelName, entries: props.view.modelCatalog?.llm || [] },
-  { kind: "asr", label: "听觉节点", currentName: props.view.currentAsrName, entries: props.view.modelCatalog?.asr || [] },
-  { kind: "tts", label: "声线节点", currentName: props.view.currentTtsName, entries: props.view.modelCatalog?.tts || [] }
+  { kind: "llm", label: "思维核心", currentName: currentModelName.value, entries: state.runtime.modelCatalog?.llm || [] },
+  { kind: "asr", label: "听觉节点", currentName: currentAsrName.value, entries: state.runtime.modelCatalog?.asr || [] },
+  { kind: "tts", label: "声线节点", currentName: currentTtsName.value, entries: state.runtime.modelCatalog?.tts || [] }
 ]);
 
 watch(
@@ -66,9 +73,9 @@ watch(
 
 async function inspectNode(type, path) {
   if (path) {
-    await props.actions.selectModel(type, path);
+    await actions.selectModel(type, path);
   }
-  props.actions.openDrawer(type);
+  actions.openDrawer(type);
 }
 
 function modelStatusLabel(status) {
@@ -102,7 +109,7 @@ async function startDownload(kind, item) {
   if (!modelId || item.placeholder) {
     return;
   }
-  await props.actions.startModelDownload?.(kind, provider, modelId, item.title);
+  await actions.startModelDownload?.(kind, provider, modelId, item.title);
 }
 
 function agentStateLabel(value) {
@@ -127,48 +134,48 @@ async function startAgentTask() {
   if (!title || !goal) {
     return;
   }
-  await props.actions.agentStartTask?.(title, goal);
+  await actions.agentStartTask?.(title, goal);
 }
 
 async function approvePlan(approve) {
-  const task = props.state.agent.currentTask;
+  const task = state.agent.currentTask;
   if (task) {
-    await props.actions.agentApprovePlan?.(task.taskId, approve);
+    await actions.agentApprovePlan?.(task.taskId, approve);
   }
 }
 
 async function approvePermission(approve) {
-  const task = props.state.agent.currentTask;
+  const task = state.agent.currentTask;
   const permission = task?.permission;
   if (task && permission) {
-    await props.actions.agentApprovePermission?.(task.taskId, permission.requestId, permission.category, approve);
+    await actions.agentApprovePermission?.(task.taskId, permission.requestId, permission.category, approve);
   }
 }
 
 async function pauseTask() {
-  const task = props.state.agent.currentTask;
+  const task = state.agent.currentTask;
   if (task) {
-    await props.actions.agentPauseTask?.(task.taskId);
+    await actions.agentPauseTask?.(task.taskId);
   }
 }
 
 async function resumeTask() {
-  const task = props.state.agent.currentTask;
+  const task = state.agent.currentTask;
   if (task) {
-    await props.actions.agentResumeTask?.(task.taskId);
+    await actions.agentResumeTask?.(task.taskId);
   }
 }
 
 async function cancelTask() {
-  const task = props.state.agent.currentTask;
+  const task = state.agent.currentTask;
   if (task) {
-    await props.actions.agentCancelTask?.(task.taskId);
+    await actions.agentCancelTask?.(task.taskId);
   }
 }
 
 async function resumeSession(sessionId) {
   const goal = local.agentGoal.trim() || "恢复任务";
-  await props.actions.agentResumeSession?.(sessionId, goal);
+  await actions.agentResumeSession?.(sessionId, goal);
 }
 </script>
 
@@ -198,15 +205,15 @@ async function resumeSession(sessionId) {
         </div>
 
         <div class="span-4 workbench-core">
-          <OrbitLoading :progress="view.progressRatio" :loaded="state.runtime.loaded" :caption="view.stateLabel" label="工作台核心轨道" />
+          <OrbitLoading :progress="progressRatio" :loaded="state.runtime.loaded" :caption="stateLabel" label="工作台核心轨道" />
         </div>
 
         <div class="span-4 scene-side-stack">
           <HoloCard class="info-card" tone="strong">
             <p class="scene-kicker">运行低语</p>
-            <p class="panel-note">{{ view.runtimeMessage }}</p>
+            <p class="panel-note">{{ state.runtime.message }}</p>
             <ul class="log-list">
-              <li v-for="(log, index) in view.shortLogs" :key="index">{{ log }}</li>
+              <li v-for="(log, index) in shortLogs" :key="index">{{ log }}</li>
             </ul>
           </HoloCard>
         </div>
@@ -419,24 +426,24 @@ async function resumeSession(sessionId) {
               label="发起任务"
               subtitle="Start"
               :icon-path="ICON_PATHS.workbench"
-              :tier="view.agent.currentTask ? 'secondary' : 'primary'"
+              :tier="state.agent.currentTask ? 'secondary' : 'primary'"
               semantic="model"
               @click="startAgentTask"
             />
           </div>
-          <p v-if="view.agent.currentTask" class="panel-note">当前任务拥有主命令；新任务仍可作为次级操作发起。</p>
+          <p v-if="state.agent.currentTask" class="panel-note">当前任务拥有主命令；新任务仍可作为次级操作发起。</p>
         </div>
 
         <div class="span-8 agent-panel">
-          <HoloCard v-if="view.agent.currentTask" class="agent-task-card" tone="strong">
+          <HoloCard v-if="state.agent.currentTask" class="agent-task-card" tone="strong">
             <p class="scene-kicker">当前任务</p>
-            <strong>{{ view.agent.currentTask.title }}</strong>
-            <p class="agent-state">{{ agentStateLabel(view.agent.currentTask.state) }}</p>
-            <ul v-if="view.agent.currentTask.plan.length" class="agent-plan-list">
-              <li v-for="(step, index) in view.agent.currentTask.plan" :key="index">{{ step.summary || step }}</li>
+            <strong>{{ state.agent.currentTask.title }}</strong>
+            <p class="agent-state">{{ agentStateLabel(state.agent.currentTask.state) }}</p>
+            <ul v-if="state.agent.currentTask.plan.length" class="agent-plan-list">
+              <li v-for="(step, index) in state.agent.currentTask.plan" :key="index">{{ step.summary || step }}</li>
             </ul>
-            <div v-if="view.agent.currentTask.failure" class="agent-failure-card">
-              <p>失败原因：{{ view.agent.currentTask.failure.reason }}</p>
+            <div v-if="state.agent.currentTask.failure" class="agent-failure-card">
+              <p>失败原因：{{ state.agent.currentTask.failure.reason }}</p>
             </div>
           </HoloCard>
 
@@ -445,34 +452,34 @@ async function resumeSession(sessionId) {
             <p class="scene-summary">让 Lumi 帮你做事——输入目标并发起第一个受控任务。</p>
           </HoloCard>
 
-          <HoloCard v-if="view.agent.currentTask" class="agent-trail-card">
+          <HoloCard v-if="state.agent.currentTask" class="agent-trail-card">
             <p class="scene-kicker">轨迹</p>
             <div class="agent-trail-grid">
               <div>
                 <strong>工具</strong>
                 <ul>
-                  <li v-for="tool in view.agent.currentTask.tools.slice(-6).reverse()" :key="tool.callId">{{ tool.toolName }} · {{ tool.status }}</li>
+                  <li v-for="tool in state.agent.currentTask.tools.slice(-6).reverse()" :key="tool.callId">{{ tool.toolName }} · {{ tool.status }}</li>
                 </ul>
               </div>
               <div>
                 <strong>文件变更</strong>
                 <ul>
-                  <li v-for="change in view.agent.currentTask.fileChanges.slice(0, 6)" :key="change.path + change.afterHash">{{ change.operation }} {{ change.path }}</li>
+                  <li v-for="change in state.agent.currentTask.fileChanges.slice(0, 6)" :key="change.path + change.afterHash">{{ change.operation }} {{ change.path }}</li>
                 </ul>
               </div>
               <div>
                 <strong>测试结果</strong>
                 <ul>
-                  <li v-for="test in view.agent.currentTask.testResults.slice(0, 6)" :key="test.command + test.durationMs">{{ test.command }} · {{ test.passed }} passed / {{ test.failed }} failed</li>
+                  <li v-for="test in state.agent.currentTask.testResults.slice(0, 6)" :key="test.command + test.durationMs">{{ test.command }} · {{ test.passed }} passed / {{ test.failed }} failed</li>
                 </ul>
               </div>
             </div>
           </HoloCard>
 
           <TaskCommandRail
-            v-if="view.agent.currentTask"
-            :task="view.agent.currentTask"
-            :state-label="agentStateLabel(view.agent.currentTask.state)"
+            v-if="state.agent.currentTask"
+            :task="state.agent.currentTask"
+            :state-label="agentStateLabel(state.agent.currentTask.state)"
             @plan-decision="approvePlan"
             @permission-decision="approvePermission"
             @pause="pauseTask"
@@ -483,7 +490,7 @@ async function resumeSession(sessionId) {
           <HoloCard class="agent-sessions-card">
             <p class="scene-kicker">最近 Session</p>
             <GlassControl
-              v-for="session in view.agent.sessions.slice(0, 5)"
+              v-for="session in state.agent.sessions.slice(0, 5)"
               :key="session.sessionId"
               class="agent-session-row"
               kind="compact"
@@ -495,7 +502,7 @@ async function resumeSession(sessionId) {
               :aria-label="`恢复 Session：${session.sessionId}`"
               @click="resumeSession(session.sessionId)"
             />
-            <p v-if="!view.agent.sessions.length" class="panel-note">暂无历史 Session。</p>
+            <p v-if="!state.agent.sessions.length" class="panel-note">暂无历史 Session。</p>
           </HoloCard>
         </div>
       </template>
